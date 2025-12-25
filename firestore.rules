@@ -1,0 +1,62 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function: Kullanıcı giriş yapmış mı?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function: Kullanıcının rolünü al (güvenli)
+    function getUserRole() {
+      // Önce authentication kontrolü yap
+      if (!isAuthenticated()) {
+        return 'viewer'; // Giriş yapmamışsa varsayılan rol
+      }
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc != null && userDoc.data.role != null 
+        ? userDoc.data.role 
+        : 'viewer'; // Varsayılan rol
+    }
+    
+    // Helper function: Admin mi?
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    // Helper function: Admin veya Agent mi?
+    function isAdminOrAgent() {
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'agent');
+    }
+    
+    // Users koleksiyonu: Kullanıcılar sadece kendi verilerini okuyabilir, admin herkesi görebilir
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    // Customers koleksiyonu: Rol bazlı erişim
+    match /customers/{customerId} {
+      // Okuma: Tüm authenticated kullanıcılar okuyabilir
+      allow read: if isAuthenticated();
+      
+      // Oluşturma: Admin ve Agent yapabilir
+      allow create: if isAdminOrAgent();
+      
+      // Güncelleme: Admin ve Agent yapabilir
+      allow update: if isAdminOrAgent();
+      
+      // Silme: Sadece Admin yapabilir
+      allow delete: if isAdmin();
+    }
+    
+    // Diğer tüm koleksiyonlar için varsayılan: Erişim yok
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

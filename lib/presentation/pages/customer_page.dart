@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../widgets/customer_list_tile.dart';
 import '../providers/customer_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/auth_provider.dart';
+import '../../core/utils/permission_helper.dart';
 import '../domain/entities/customer.dart';
 import 'add_customer_page.dart';
 import 'customer_detail_page.dart';
@@ -44,28 +46,79 @@ class _CustomerPageState extends State<CustomerPage> {
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
-          PopupMenuButton<ThemeMode>(
-            icon: const Icon(Icons.brightness_6),
-            onSelected: (mode) => context.read<ThemeProvider>().setTheme(mode),
-            itemBuilder: (context) {
-              final themeMode = Provider.of<ThemeProvider>(context, listen: false).themeMode;
-              return [
-                CheckedPopupMenuItem(
-                  value: ThemeMode.system,
-                  checked: themeMode == ThemeMode.system,
-                  child: const Text('Sistem'),
-                ),
-                CheckedPopupMenuItem(
-                  value: ThemeMode.light,
-                  checked: themeMode == ThemeMode.light,
-                  child: const Text('Açık'),
-                ),
-                CheckedPopupMenuItem(
-                  value: ThemeMode.dark,
-                  checked: themeMode == ThemeMode.dark,
-                  child: const Text('Koyu'),
-                ),
-              ];
+          Consumer<AuthProvider>(
+            builder: (context, authProvider, _) {
+              return PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) async {
+                  if (value == 'logout') {
+                    try {
+                      await authProvider.signOut();
+                      if (context.mounted) {
+                        Navigator.of(context).pushReplacementNamed('/login');
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString())),
+                        );
+                      }
+                    }
+                  }
+                },
+                itemBuilder: (context) {
+                  final themeMode = Provider.of<ThemeProvider>(context, listen: false).themeMode;
+                  return [
+                    PopupMenuItem(
+                      value: 'theme',
+                      child: PopupMenuButton<ThemeMode>(
+                        child: Row(
+                          children: [
+                            const Icon(Icons.brightness_6),
+                            const SizedBox(width: 8),
+                            const Text('Tema'),
+                            const Spacer(),
+                            Text(themeMode == ThemeMode.system
+                                ? 'Sistem'
+                                : themeMode == ThemeMode.light
+                                    ? 'Açık'
+                                    : 'Koyu'),
+                          ],
+                        ),
+                        onSelected: (mode) => context.read<ThemeProvider>().setTheme(mode),
+                        itemBuilder: (context) => [
+                          CheckedPopupMenuItem(
+                            value: ThemeMode.system,
+                            checked: themeMode == ThemeMode.system,
+                            child: const Text('Sistem'),
+                          ),
+                          CheckedPopupMenuItem(
+                            value: ThemeMode.light,
+                            checked: themeMode == ThemeMode.light,
+                            child: const Text('Açık'),
+                          ),
+                          CheckedPopupMenuItem(
+                            value: ThemeMode.dark,
+                            checked: themeMode == ThemeMode.dark,
+                            child: const Text('Koyu'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    PopupMenuItem(
+                      value: 'logout',
+                      child: const Row(
+                        children: [
+                          Icon(Icons.logout),
+                          SizedBox(width: 8),
+                          Text('Çıkış Yap'),
+                        ],
+                      ),
+                    ),
+                  ];
+                },
+              );
             },
           ),
         ],
@@ -110,36 +163,42 @@ class _CustomerPageState extends State<CustomerPage> {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          Expanded(
-                            child: Card(
-                              child: InkWell(
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => const AddCustomerPage()),
-                                  );
-                                },
-                                borderRadius: BorderRadius.circular(12),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20.0),
-                                  child: Column(
-                                    children: [
-                                      Icon(
-                                        Icons.add_circle_outline,
-                                        size: 32,
-                                        color: Theme.of(context).colorScheme.primary,
+                          Consumer<AuthProvider>(
+                            builder: (context, authProvider, _) {
+                              final canCreate = PermissionHelper.canCreateCustomer(authProvider.userRole);
+                              if (!canCreate) return const SizedBox.shrink();
+                              return Expanded(
+                                child: Card(
+                                  child: InkWell(
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(builder: (_) => const AddCustomerPage()),
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(20.0),
+                                      child: Column(
+                                        children: [
+                                          Icon(
+                                            Icons.add_circle_outline,
+                                            size: 32,
+                                            color: Theme.of(context).colorScheme.primary,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Yeni Müşteri',
+                                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                              color: Theme.of(context).colorScheme.primary,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Yeni Müşteri',
-                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -297,6 +356,15 @@ class _CustomerPageState extends State<CustomerPage> {
                           decoration: InputDecoration(
                             hintText: 'Müşteri ara (isim, email, telefon)',
                             prefixIcon: const Icon(Icons.search),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      provider.searchQuery = '';
+                                    },
+                                  )
+                                : null,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
@@ -304,7 +372,10 @@ class _CustomerPageState extends State<CustomerPage> {
                             filled: true,
                             fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
                           ),
-                          onChanged: (value) => provider.searchQuery = value,
+                          onChanged: (value) {
+                            provider.searchQuery = value;
+                            setState(() {}); // suffixIcon'u güncellemek için
+                          },
                           onTapOutside: (_) => FocusScope.of(context).unfocus(),
                         ),
                       ),
@@ -356,76 +427,86 @@ class _CustomerPageState extends State<CustomerPage> {
                                 (context, index) {
                                   return Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-                                    child: Card(
-                                      child: CustomerListTile(
-                                        customer: provider.filteredCustomers[index],
-                                        onTap: () {
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) => CustomerDetailPage(
-                                                customer: provider.filteredCustomers[index],
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        onToggleFavorite: () async {
-                                          try {
-                                            await provider.toggleFavorite(provider.filteredCustomers[index].id);
-                                          } catch (e) {
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text(e.toString())),
+                                    child: Consumer<AuthProvider>(
+                                      builder: (context, authProvider, _) {
+                                        final canUpdate = PermissionHelper.canUpdateCustomer(authProvider.userRole);
+                                        final canDelete = PermissionHelper.canDeleteCustomer(authProvider.userRole);
+                                        return Card(
+                                          child: CustomerListTile(
+                                            customer: provider.filteredCustomers[index],
+                                            onTap: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) => CustomerDetailPage(
+                                                    customer: provider.filteredCustomers[index],
+                                                  ),
+                                                ),
                                               );
-                                            }
-                                          }
-                                        },
-                                        onEdit: () {
-                                          final originalIndex = provider.customers.indexWhere((m) => m.id == provider.filteredCustomers[index].id);
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) => AddCustomerPage(
-                                                customer: provider.customers[originalIndex],
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        onDelete: () async {
-                                          final originalIndex = provider.customers.indexWhere((m) => m.id == provider.filteredCustomers[index].id);
-                                          final confirm = await showDialog<bool>(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: const Text('Müşteri Sil'),
-                                              content: const Text('Bu müşteriyi silmek istediğinize emin misiniz?'),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () => Navigator.of(context).pop(false),
-                                                  child: const Text('İptal'),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () => Navigator.of(context).pop(true),
-                                                  child: const Text('Sil'),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                          if (confirm == true) {
-                                            try {
-                                              await provider.deleteCustomer(provider.customers[originalIndex].id);
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Müşteri silindi')),
-                                                );
+                                            },
+                                            onToggleFavorite: () async {
+                                              try {
+                                                await provider.toggleFavorite(provider.filteredCustomers[index].id);
+                                              } catch (e) {
+                                                if (context.mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(content: Text(e.toString())),
+                                                  );
+                                                }
                                               }
-                                            } catch (e) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(content: Text(e.toString())),
-                                                );
-                                              }
-                                            }
-                                          }
-                                        },
-                                      ),
+                                            },
+                                            onEdit: canUpdate
+                                                ? () {
+                                                    final originalIndex = provider.customers.indexWhere((m) => m.id == provider.filteredCustomers[index].id);
+                                                    Navigator.of(context).push(
+                                                      MaterialPageRoute(
+                                                        builder: (_) => AddCustomerPage(
+                                                          customer: provider.customers[originalIndex],
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                : null,
+                                            onDelete: canDelete
+                                                ? () async {
+                                                    final originalIndex = provider.customers.indexWhere((m) => m.id == provider.filteredCustomers[index].id);
+                                                    final confirm = await showDialog<bool>(
+                                                      context: context,
+                                                      builder: (context) => AlertDialog(
+                                                        title: const Text('Müşteri Sil'),
+                                                        content: const Text('Bu müşteriyi silmek istediğinize emin misiniz?'),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () => Navigator.of(context).pop(false),
+                                                            child: const Text('İptal'),
+                                                          ),
+                                                          TextButton(
+                                                            onPressed: () => Navigator.of(context).pop(true),
+                                                            child: const Text('Sil'),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                    if (confirm == true) {
+                                                      try {
+                                                        await provider.deleteCustomer(provider.customers[originalIndex].id);
+                                                        if (context.mounted) {
+                                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                            const SnackBar(content: Text('Müşteri silindi')),
+                                                          );
+                                                        }
+                                                      } catch (e) {
+                                                        if (context.mounted) {
+                                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                            SnackBar(content: Text(e.toString())),
+                                                          );
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                : null,
+                                          ),
+                                        );
+                                      },
                                     ),
                                   );
                                 },

@@ -3,6 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../domain/entities/customer.dart';
 import '../providers/customer_provider.dart';
+import '../providers/auth_provider.dart';
+import '../../core/utils/permission_helper.dart';
 
 class CustomerDetailPage extends StatefulWidget {
   final Customer customer;
@@ -150,48 +152,61 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
                         ),
                         childrenPadding: const EdgeInsets.all(16.0),
                         children: [
-                          if (customer.tags.isNotEmpty) ...[
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: customer.tags.map((tag) {
-                                return Chip(
-                                  label: Text(tag),
-                                  backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                                  deleteIcon: const Icon(Icons.close, size: 16),
-                                  onDeleted: () {
-                                    provider.removeTag(customer.id, tag);
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _tagController,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Etiket adı',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              ElevatedButton(
-                                onPressed: () {
-                                  if (_tagController.text.trim().isNotEmpty) {
-                                    provider.addTag(
-                                      customer.id,
-                                      _tagController.text.trim(),
-                                    );
-                                    _tagController.clear();
-                                  }
-                                },
-                                child: const Text('Ekle'),
-                              ),
-                            ],
+                          Consumer<AuthProvider>(
+                            builder: (context, authProvider, _) {
+                              final canManageTags = PermissionHelper.canManageTags(authProvider.userRole);
+                              return Column(
+                                children: [
+                                  if (customer.tags.isNotEmpty) ...[
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: customer.tags.map((tag) {
+                                        return Chip(
+                                          label: Text(tag),
+                                          backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                                          deleteIcon: canManageTags ? const Icon(Icons.close, size: 16) : null,
+                                          onDeleted: canManageTags
+                                              ? () {
+                                                  provider.removeTag(customer.id, tag);
+                                                }
+                                              : null,
+                                        );
+                                      }).toList(),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                  if (canManageTags) ...[
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _tagController,
+                                            decoration: const InputDecoration(
+                                              hintText: 'Etiket adı',
+                                              border: OutlineInputBorder(),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            if (_tagController.text.trim().isNotEmpty) {
+                                              provider.addTag(
+                                                customer.id,
+                                                _tagController.text.trim(),
+                                              );
+                                              _tagController.clear();
+                                            }
+                                          },
+                                          child: const Text('Ekle'),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -208,48 +223,61 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
                         ),
                         childrenPadding: const EdgeInsets.all(16.0),
                         children: [
-                          if (customer.notes.isNotEmpty) ...[
-                            ...customer.notes.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final note = entry.value;
-                              return Card(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  title: Text(note),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.delete),
-                                    onPressed: () {
-                                      provider.removeNote(customer.id, index);
-                                    },
-                                  ),
-                                ),
+                          Consumer<AuthProvider>(
+                            builder: (context, authProvider, _) {
+                              final canManageNotes = PermissionHelper.canManageNotes(authProvider.userRole);
+                              return Column(
+                                children: [
+                                  if (customer.notes.isNotEmpty) ...[
+                                    ...customer.notes.asMap().entries.map((entry) {
+                                      final index = entry.key;
+                                      final note = entry.value;
+                                      return Card(
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        child: ListTile(
+                                          title: Text(note),
+                                          trailing: canManageNotes
+                                              ? IconButton(
+                                                  icon: const Icon(Icons.delete),
+                                                  onPressed: () {
+                                                    provider.removeNote(customer.id, index);
+                                                  },
+                                                )
+                                              : null,
+                                        ),
+                                      );
+                                    }),
+                                    const SizedBox(height: 12),
+                                  ],
+                                  if (canManageNotes) ...[
+                                    TextField(
+                                      controller: _noteController,
+                                      maxLines: 3,
+                                      decoration: const InputDecoration(
+                                        hintText: 'Notunuzu buraya yazın...',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: () {
+                                          if (_noteController.text.trim().isNotEmpty) {
+                                            provider.addNote(
+                                              customer.id,
+                                              _noteController.text.trim(),
+                                            );
+                                            _noteController.clear();
+                                          }
+                                        },
+                                        child: const Text('Not Ekle'),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               );
-                            }),
-                            const SizedBox(height: 12),
-                          ],
-                          TextField(
-                            controller: _noteController,
-                            maxLines: 3,
-                            decoration: const InputDecoration(
-                              hintText: 'Notunuzu buraya yazın...',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                if (_noteController.text.trim().isNotEmpty) {
-                                  provider.addNote(
-                                    customer.id,
-                                    _noteController.text.trim(),
-                                  );
-                                  _noteController.clear();
-                                }
-                              },
-                              child: const Text('Not Ekle'),
-                            ),
+                            },
                           ),
                         ],
                       ),
