@@ -4,9 +4,10 @@ import 'package:uuid/uuid.dart';
 import '../providers/customer_provider.dart';
 import '../../data/models/customer_model.dart';
 import '../domain/entities/customer.dart';
+import '../../core/theme/app_theme.dart';
 
 class AddCustomerPage extends StatefulWidget {
-  final CustomerModel? customer;
+  final Customer? customer;
   const AddCustomerPage({Key? key, this.customer}) : super(key: key);
 
   @override
@@ -62,13 +63,19 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
         }
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isEdit ? 'Müşteri güncellendi' : 'Müşteri eklendi')),
+          SnackBar(
+            content: Text(isEdit ? 'Müşteri güncellendi' : 'Müşteri eklendi'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
         );
         Navigator.of(context).pop();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.errorColor),
+          );
+        }
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
@@ -77,152 +84,142 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
 
   String _getCategoryName(CustomerCategory category) {
     switch (category) {
-      case CustomerCategory.active:
-        return 'Aktif';
-      case CustomerCategory.potential:
-        return 'Potansiyel';
-      case CustomerCategory.vip:
-        return 'VIP';
-      case CustomerCategory.inactive:
-        return 'Pasif';
-      default:
-        return 'Bilinmiyor';
+      case CustomerCategory.active: return 'Aktif';
+      case CustomerCategory.potential: return 'Potansiyel';
+      case CustomerCategory.vip: return 'VIP';
+      case CustomerCategory.inactive: return 'Pasif';
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = widget.customer != null;
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.customer != null ? 'Müşteri Düzenle' : 'Müşteri Ekle')),
+      backgroundColor: AppTheme.backgroundColor,
+      appBar: AppBar(
+        title: Text(isEdit ? 'Düzenle' : 'Yeni Müşteri'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: Colors.black54),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
+          constraints: const BoxConstraints(maxWidth: 500),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Form(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEdit ? 'Müşteriyi Güncelle' : 'Müşteri Kaydet',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Müşteri bilgilerini aşağıdan yönetebilirsiniz.',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 32),
+                Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        widget.customer != null ? 'Müşteri Düzenle' : 'Yeni Müşteri Ekle',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      TextFormField(
+                      _buildTextField(
                         controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: 'İsim',
-                          prefixIcon: const Icon(Icons.person_outline),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                        ),
-                        validator: (value) => value == null || value.isEmpty ? 'İsim giriniz' : null,
+                        label: 'Tam İsim',
+                        icon: Icons.person_outline_rounded,
+                        validator: (v) => v!.isEmpty ? 'İsim gerekli' : null,
                       ),
-                      const SizedBox(height: 16),
-                      TextFormField(
+                      const SizedBox(height: 20),
+                      _buildTextField(
                         controller: _emailController,
-                        decoration: InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: const Icon(Icons.email_outlined),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Email giriniz';
-                          final emailRegex = RegExp(r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
-                          if (!emailRegex.hasMatch(value.trim())) return 'Geçerli bir email giriniz';
+                        label: 'E-posta Adresi',
+                        icon: Icons.alternate_email_rounded,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (v) {
+                          if (v!.isEmpty) return 'E-posta gerekli';
+                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return 'Geçersiz e-posta';
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
-                      TextFormField(
+                      const SizedBox(height: 20),
+                      _buildTextField(
                         controller: _phoneController,
-                        decoration: InputDecoration(
-                          labelText: 'Telefon',
-                          prefixIcon: const Icon(Icons.phone_outlined),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Telefon giriniz';
-                          final digits = value.replaceAll(RegExp(r'\\D'), '');
-                          if (digits.length < 10) return 'Geçerli bir telefon giriniz';
-                          return null;
-                        },
+                        label: 'Telefon Numarası',
+                        icon: Icons.phone_android_rounded,
+                        keyboardType: TextInputType.phone,
+                        validator: (v) => v!.length < 10 ? 'Geçersiz telefon' : null,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       DropdownButtonFormField<CustomerCategory>(
                         value: _selectedCategory,
-                        decoration: InputDecoration(
-                          labelText: 'Kategori',
-                          prefixIcon: const Icon(Icons.category_outlined),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                        ),
-                        items: CustomerCategory.values.map((category) {
-                          return DropdownMenuItem(
-                            value: category,
-                            child: Text(_getCategoryName(category)),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedCategory = value;
-                            });
-                          }
-                        },
+                        decoration: _inputDecoration('Segment / Kategori', Icons.layers_outlined),
+                        dropdownColor: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        items: CustomerCategory.values.map((c) => DropdownMenuItem(value: c, child: Text(_getCategoryName(c)))).toList(),
+                        onChanged: (v) { if (v != null) setState(() => _selectedCategory = v); },
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 40),
                       SizedBox(
-                        height: 48,
+                        height: 56,
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _saveCustomer,
                           style: ElevatedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            backgroundColor: AppTheme.primaryColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            elevation: 0,
                           ),
                           child: _isLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
+                              ? const CircularProgressIndicator(color: Colors.white)
                               : Text(
-                                  widget.customer != null ? 'Güncelle' : 'Kaydet',
-                                  style: const TextStyle(fontSize: 16),
+                                  isEdit ? 'Güncellemeleri Kaydet' : 'Müşteriyi Ekle',
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                                 ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
       ),
     );
   }
-} 
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: _inputDecoration(label, icon),
+      validator: validator,
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 22),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+    );
+  }
+}

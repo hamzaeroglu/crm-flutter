@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../../data/models/customer_model.dart';
 import '../../data/repo/customer_repository.dart';
 import '../../presentation/domain/entities/customer.dart';
+import '../../core/services/audit_service.dart';
 
 enum SortOption { nameAsc, nameDesc }
 
 class CustomerProvider extends ChangeNotifier {
   final CustomerRepository repository;
+  final AuditService _auditService = AuditService();
 
   List<CustomerModel> _customers = [];
   List<CustomerModel> get customers => _customers;
@@ -154,6 +156,7 @@ class CustomerProvider extends ChangeNotifier {
   Future<void> addCustomer(CustomerModel customer) async {
     try {
       await repository.addCustomer(customer);
+      await _auditService.logAction(action: 'CREATE_CUSTOMER', details: 'Name: ${customer.name}, Email: ${customer.email}');
       await fetchCustomers();
     } catch (e) {
       throw Exception('Müşteri eklenemedi: $e');
@@ -163,6 +166,7 @@ class CustomerProvider extends ChangeNotifier {
   Future<void> updateCustomer(CustomerModel customer) async {
     try {
       await repository.updateCustomer(customer);
+      await _auditService.logAction(action: 'UPDATE_CUSTOMER', details: 'ID: ${customer.id}');
       await fetchCustomers();
     } catch (e) {
       throw Exception('Müşteri güncellenemedi: $e');
@@ -172,6 +176,7 @@ class CustomerProvider extends ChangeNotifier {
   Future<void> deleteCustomer(String id) async {
     try {
       await repository.deleteCustomer(id);
+      await _auditService.logAction(action: 'DELETE_CUSTOMER', details: 'ID: $id');
       await fetchCustomers();
     } catch (e) {
       throw Exception('Müşteri silinemedi: $e');

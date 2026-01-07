@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../domain/entities/customer.dart';
+import '../../core/theme/app_theme.dart';
 
 class CustomerListTile extends StatelessWidget {
   final Customer customer;
@@ -7,7 +8,6 @@ class CustomerListTile extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onToggleFavorite;
-  final VoidCallback? onCategoryChanged;
 
   const CustomerListTile({
     Key? key,
@@ -16,170 +16,193 @@ class CustomerListTile extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.onToggleFavorite,
-    this.onCategoryChanged,
   }) : super(key: key);
 
   String _getCategoryName(CustomerCategory category) {
     switch (category) {
-      case CustomerCategory.active:
-        return 'Aktif';
-      case CustomerCategory.potential:
-        return 'Potansiyel';
-      case CustomerCategory.vip:
-        return 'VIP';
-      case CustomerCategory.inactive:
-        return 'Pasif';
-      default:
-        return 'Bilinmiyor';
+      case CustomerCategory.active: return 'Aktif';
+      case CustomerCategory.potential: return 'Potansiyel';
+      case CustomerCategory.vip: return 'VIP';
+      case CustomerCategory.inactive: return 'Pasif';
     }
   }
 
   Color _getCategoryColor(CustomerCategory category) {
     switch (category) {
-      case CustomerCategory.active:
-        return Colors.green;
-      case CustomerCategory.potential:
-        return Colors.orange;
-      case CustomerCategory.vip:
-        return Colors.purple;
-      case CustomerCategory.inactive:
-        return Colors.grey;
-      default:
-        return Colors.grey;
+      case CustomerCategory.active: return Colors.green;
+      case CustomerCategory.potential: return Colors.orange;
+      case CustomerCategory.vip: return Colors.purple;
+      case CustomerCategory.inactive: return Colors.grey;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      leading: CircleAvatar(
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        child: Text(
-          customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.bold,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              // Profile Identity
+              Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                    child: Text(
+                      customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: _getCategoryColor(customer.category),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              
+              // Info Segment
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            customer.name,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                        ),
+                        if (customer.isFavorite)
+                          const Icon(Icons.favorite_rounded, color: Colors.red, size: 16),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      customer.email,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      children: [
+                        _infoBadge(
+                          context, 
+                          _getCategoryName(customer.category), 
+                          _getCategoryColor(customer.category).withOpacity(0.1),
+                          _getCategoryColor(customer.category),
+                        ),
+                        if (customer.tags.isNotEmpty)
+                          _infoBadge(
+                            context,
+                            customer.tags.first,
+                            AppTheme.secondaryColor.withOpacity(0.1),
+                            AppTheme.secondaryColor,
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Action Buttons
+              Column(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      customer.isFavorite ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+                      color: customer.isFavorite ? Colors.red : Colors.grey.shade400,
+                      size: 22,
+                    ),
+                    onPressed: onToggleFavorite,
+                  ),
+                  PopupMenuButton<String>(
+                    icon: Icon(Icons.more_horiz_rounded, color: Colors.grey.shade400),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18, color: Colors.grey.shade700),
+                            const SizedBox(width: 12),
+                            const Text('Düzenle'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.errorColor),
+                            const SizedBox(width: 12),
+                            const Text('Sil', style: TextStyle(color: AppTheme.errorColor)),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onSelected: (value) {
+                      if (value == 'edit') onEdit?.call();
+                      if (value == 'delete') onDelete?.call();
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(
-              customer.name,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          if (onToggleFavorite != null)
-            IconButton(
-              icon: Icon(
-                customer.isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: customer.isFavorite ? Colors.red : null,
-                size: 20,
-              ),
-              onPressed: onToggleFavorite,
-              tooltip: customer.isFavorite ? 'Favorilerden çıkar' : 'Favorilere ekle',
-            ),
-        ],
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(
-                Icons.email_outlined,
-                size: 16,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  customer.email,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              Icon(
-                Icons.phone_outlined,
-                size: 16,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                customer.phone,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Chip(
-            label: Text(
-              _getCategoryName(customer.category),
-              style: const TextStyle(fontSize: 12, color: Colors.white),
-            ),
-            backgroundColor: _getCategoryColor(customer.category),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-          ),
-          if (customer.tags != null && customer.tags.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: customer.tags.map((tag) {
-                return Chip(
-                  label: Text(
-                    tag,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Theme.of(context).colorScheme.onSecondaryContainer,
-                    ),
-                  ),
-                  backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                );
-              }).toList(),
-            ),
-          ],
-        ],
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: Icon(
-              Icons.edit_outlined,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            onPressed: onEdit,
-            tooltip: 'Düzenle',
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.delete_outline,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: onDelete,
-            tooltip: 'Sil',
-          ),
-        ],
-      ),
-      onTap: onTap,
     );
   }
-} 
+
+  Widget _infoBadge(BuildContext context, String label, Color bgColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+}
+ 

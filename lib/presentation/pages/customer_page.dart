@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:animations/animations.dart';
 import '../widgets/customer_list_tile.dart';
 import '../providers/customer_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/auth_provider.dart';
 import '../../core/utils/permission_helper.dart';
+import '../../core/theme/app_theme.dart';
 import '../domain/entities/customer.dart';
 import 'add_customer_page.dart';
 import 'customer_detail_page.dart';
+import 'user_management_page.dart';
 
 class CustomerPage extends StatefulWidget {
   const CustomerPage({Key? key}) : super(key: key);
@@ -19,16 +23,23 @@ class CustomerPage extends StatefulWidget {
 class _CustomerPageState extends State<CustomerPage> {
   final _searchController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<CustomerProvider>();
+      if (provider.customers.isEmpty) {
+        provider.fetchCustomers();
+      }
+    });
+  }
+
   String _getCategoryName(CustomerCategory category) {
     switch (category) {
-      case CustomerCategory.active:
-        return 'Aktif';
-      case CustomerCategory.potential:
-        return 'Potansiyel';
-      case CustomerCategory.vip:
-        return 'VIP';
-      case CustomerCategory.inactive:
-        return 'Pasif';
+      case CustomerCategory.active: return 'Aktif';
+      case CustomerCategory.potential: return 'Potansiyel';
+      case CustomerCategory.vip: return 'VIP';
+      case CustomerCategory.inactive: return 'Pasif';
     }
   }
 
@@ -40,485 +51,380 @@ class _CustomerPageState extends State<CustomerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final customerProvider = context.watch<CustomerProvider>();
+    final authProvider = context.watch<AuthProvider>();
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('CRM Dashboard'),
-        elevation: 0,
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        actions: [
-          Consumer<AuthProvider>(
-            builder: (context, authProvider, _) {
-              return PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                onSelected: (value) async {
-                  if (value == 'logout') {
-                    try {
-                      await authProvider.signOut();
-                      if (context.mounted) {
-                        Navigator.of(context).pushReplacementNamed('/login');
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.toString())),
-                        );
-                      }
-                    }
-                  }
-                },
-                itemBuilder: (context) {
-                  final themeMode = Provider.of<ThemeProvider>(context, listen: false).themeMode;
-                  return [
-                    PopupMenuItem(
-                      value: 'theme',
-                      child: PopupMenuButton<ThemeMode>(
-                        child: Row(
-                          children: [
-                            const Icon(Icons.brightness_6),
-                            const SizedBox(width: 8),
-                            const Text('Tema'),
-                            const Spacer(),
-                            Text(themeMode == ThemeMode.system
-                                ? 'Sistem'
-                                : themeMode == ThemeMode.light
-                                    ? 'Açık'
-                                    : 'Koyu'),
-                          ],
-                        ),
-                        onSelected: (mode) => context.read<ThemeProvider>().setTheme(mode),
-                        itemBuilder: (context) => [
-                          CheckedPopupMenuItem(
-                            value: ThemeMode.system,
-                            checked: themeMode == ThemeMode.system,
-                            child: const Text('Sistem'),
-                          ),
-                          CheckedPopupMenuItem(
-                            value: ThemeMode.light,
-                            checked: themeMode == ThemeMode.light,
-                            child: const Text('Açık'),
-                          ),
-                          CheckedPopupMenuItem(
-                            value: ThemeMode.dark,
-                            checked: themeMode == ThemeMode.dark,
-                            child: const Text('Koyu'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuDivider(),
-                    PopupMenuItem(
-                      value: 'logout',
-                      child: const Row(
-                        children: [
-                          Icon(Icons.logout),
-                          SizedBox(width: 8),
-                          Text('Çıkış Yap'),
-                        ],
-                      ),
-                    ),
-                  ];
-                },
-              );
-            },
+      backgroundColor: AppTheme.backgroundColor,
+      body: CustomScrollView(
+        slivers: [
+          // Premium Animated AppBar
+          SliverAppBar(
+            pinned: true,
+            expandedHeight: 120,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              title: Text(
+                'CRM Dashboard',
+                style: GoogleFonts.poppins(
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+              centerTitle: false,
+            ),
+            actions: [
+              _buildActionMenu(context, authProvider),
+              const SizedBox(width: 12),
+            ],
           ),
-        ],
-      ),
-      body: Consumer<CustomerProvider>(
-        builder: (context, provider, child) {
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: CustomScrollView(
-                slivers: [
-                  // Dashboard Cards
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(20.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Toplam Müşteri',
-                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      '${provider.customers.length}',
-                                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Theme.of(context).colorScheme.primary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Consumer<AuthProvider>(
-                            builder: (context, authProvider, _) {
-                              final canCreate = PermissionHelper.canCreateCustomer(authProvider.userRole);
-                              if (!canCreate) return const SizedBox.shrink();
-                              return Expanded(
-                                child: Card(
-                                  child: InkWell(
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(builder: (_) => const AddCustomerPage()),
-                                      );
-                                    },
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(20.0),
-                                      child: Column(
-                                        children: [
-                                          Icon(
-                                            Icons.add_circle_outline,
-                                            size: 32,
-                                            color: Theme.of(context).colorScheme.primary,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Yeni Müşteri',
-                                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                              color: Theme.of(context).colorScheme.primary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Category/Favorite Filters (collapsible)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Card(
-                        child: ExpansionTile(
-                          title: const Text('Durum & Favori Filtreleri'),
-                          childrenPadding: const EdgeInsets.all(16.0),
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Sıralama',
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                ),
-                                DropdownButton<SortOption>(
-                                  value: provider.sortOption,
-                                  onChanged: (value) {
-                                    if (value != null) provider.sortOption = value;
-                                  },
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: SortOption.nameAsc,
-                                      child: Text('İsim A-Z'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: SortOption.nameDesc,
-                                      child: Text('İsim Z-A'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      children: [
-                                        FilterChip(
-                                          label: const Text('Tümü'),
-                                          selected: provider.selectedCategory == null,
-                                          onSelected: (selected) {
-                                            if (selected) provider.selectedCategory = null;
-                                          },
-                                        ),
-                                        const SizedBox(width: 8),
-                                        ...CustomerCategory.values.map((category) {
-                                          final isSelected = provider.selectedCategory == category;
-                                          return Padding(
-                                            padding: const EdgeInsets.only(right: 8.0),
-                                            child: FilterChip(
-                                              label: Text(_getCategoryName(category)),
-                                              selected: isSelected,
-                                              onSelected: (selected) {
-                                                provider.selectedCategory = selected ? category : null;
-                                              },
-                                            ),
-                                          );
-                                        }),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                FilterChip(
-                                  label: const Text('Favoriler'),
-                                  selected: provider.showOnlyFavorites,
-                                  onSelected: (selected) {
-                                    provider.showOnlyFavorites = selected;
-                                  },
-                                  avatar: Icon(
-                                    provider.showOnlyFavorites ? Icons.favorite : Icons.favorite_border,
-                                    size: 18,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: OutlinedButton.icon(
-                                icon: const Icon(Icons.refresh),
-                                label: const Text('Filtreleri temizle'),
-                                onPressed: () {
-                                  provider.resetFilters();
-                                  _searchController.clear();
-                                },
-                              ),
-                            ),
-                          ],
+
+          // Dashboard Content
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Stats Highlights
+                  _buildStatsSection(customerProvider),
+                  const SizedBox(height: 32),
+                  
+                  // Section Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Müşteri Listesi',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
                         ),
                       ),
-                    ),
+                      if (PermissionHelper.canCreateCustomer(authProvider.userRole))
+                        _buildAddButton(context),
+                    ],
                   ),
-                  // Tag Filters (collapsible)
-                  if (provider.allTags.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Card(
-                          child: ExpansionTile(
-                            title: const Text('Etiket Filtreleri'),
-                            childrenPadding: const EdgeInsets.all(16.0),
-                            children: [
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: [
-                                    FilterChip(
-                                      label: const Text('Tüm Etiketler'),
-                                      selected: provider.selectedTag.isEmpty,
-                                      onSelected: (selected) {
-                                        if (selected) provider.selectedTag = '';
-                                      },
-                                    ),
-                                    const SizedBox(width: 8),
-                                    ...provider.allTags.map((tag) {
-                                      final isSelected = provider.selectedTag == tag;
-                                      return Padding(
-                                        padding: const EdgeInsets.only(right: 8.0),
-                                        child: FilterChip(
-                                          label: Text(tag),
-                                          selected: isSelected,
-                                          onSelected: (selected) {
-                                            provider.selectedTag = selected ? tag : '';
-                                          },
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  // Search Bar
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Card(
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText: 'Müşteri ara (isim, email, telefon)',
-                            prefixIcon: const Icon(Icons.search),
-                            suffixIcon: _searchController.text.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      provider.searchQuery = '';
-                                    },
-                                  )
-                                : null,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                          ),
-                          onChanged: (value) {
-                            provider.searchQuery = value;
-                            setState(() {}); // suffixIcon'u güncellemek için
-                          },
-                          onTapOutside: (_) => FocusScope.of(context).unfocus(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  // Customer List
-                  provider.isLoading
-                      ? const SliverToBoxAdapter(
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      : provider.filteredCustomers.isEmpty
-                          ? SliverToBoxAdapter(
-                              child: Center(
-                                child: Card(
-                                  margin: const EdgeInsets.all(32.0),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(32.0),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.people_outline,
-                                          size: 64,
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'Hiç müşteri yok',
-                                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Sağ üstten yeni müşteri ekleyebilirsiniz',
-                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            )
-                          : SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) {
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-                                    child: Consumer<AuthProvider>(
-                                      builder: (context, authProvider, _) {
-                                        final canUpdate = PermissionHelper.canUpdateCustomer(authProvider.userRole);
-                                        final canDelete = PermissionHelper.canDeleteCustomer(authProvider.userRole);
-                                        return Card(
-                                          child: CustomerListTile(
-                                            customer: provider.filteredCustomers[index],
-                                            onTap: () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                  builder: (_) => CustomerDetailPage(
-                                                    customer: provider.filteredCustomers[index],
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                            onToggleFavorite: () async {
-                                              try {
-                                                await provider.toggleFavorite(provider.filteredCustomers[index].id);
-                                              } catch (e) {
-                                                if (context.mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(content: Text(e.toString())),
-                                                  );
-                                                }
-                                              }
-                                            },
-                                            onEdit: canUpdate
-                                                ? () {
-                                                    final originalIndex = provider.customers.indexWhere((m) => m.id == provider.filteredCustomers[index].id);
-                                                    Navigator.of(context).push(
-                                                      MaterialPageRoute(
-                                                        builder: (_) => AddCustomerPage(
-                                                          customer: provider.customers[originalIndex],
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }
-                                                : null,
-                                            onDelete: canDelete
-                                                ? () async {
-                                                    final originalIndex = provider.customers.indexWhere((m) => m.id == provider.filteredCustomers[index].id);
-                                                    final confirm = await showDialog<bool>(
-                                                      context: context,
-                                                      builder: (context) => AlertDialog(
-                                                        title: const Text('Müşteri Sil'),
-                                                        content: const Text('Bu müşteriyi silmek istediğinize emin misiniz?'),
-                                                        actions: [
-                                                          TextButton(
-                                                            onPressed: () => Navigator.of(context).pop(false),
-                                                            child: const Text('İptal'),
-                                                          ),
-                                                          TextButton(
-                                                            onPressed: () => Navigator.of(context).pop(true),
-                                                            child: const Text('Sil'),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    );
-                                                    if (confirm == true) {
-                                                      try {
-                                                        await provider.deleteCustomer(provider.customers[originalIndex].id);
-                                                        if (context.mounted) {
-                                                          ScaffoldMessenger.of(context).showSnackBar(
-                                                            const SnackBar(content: Text('Müşteri silindi')),
-                                                          );
-                                                        }
-                                                      } catch (e) {
-                                                        if (context.mounted) {
-                                                          ScaffoldMessenger.of(context).showSnackBar(
-                                                            SnackBar(content: Text(e.toString())),
-                                                          );
-                                                        }
-                                                      }
-                                                    }
-                                                  }
-                                                : null,
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  );
-                                },
-                                childCount: provider.filteredCustomers.length,
-                              ),
-                            ),
+                  const SizedBox(height: 16),
+
+                  // Modern Search Bar
+                  _buildSearchBar(customerProvider),
+                  const SizedBox(height: 16),
+
+                  // Horizontal Category Filter
+                  _buildCategoryFilter(customerProvider),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
-          );
-        },
+          ),
+
+          // List Content
+          _buildCustomerList(customerProvider, authProvider),
+          
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
+        ],
       ),
     );
   }
-} 
+
+  Widget _buildActionMenu(BuildContext context, AuthProvider authProvider) {
+    return PopupMenuButton<String>(
+      icon: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor.withOpacity(0.05),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.menu_rounded, color: AppTheme.primaryColor, size: 20),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      itemBuilder: (context) {
+        final isAdmin = authProvider.userRole == UserRole.admin;
+        return [
+          if (isAdmin)
+            PopupMenuItem(
+              value: 'users',
+              child: const Row(
+                children: [
+                  Icon(Icons.admin_panel_settings_outlined, size: 20),
+                  SizedBox(width: 12),
+                  Text('Kullanıcı Yönetimi'),
+                ],
+              ),
+              onTap: () => Future.delayed(
+                const Duration(milliseconds: 100),
+                () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UserManagementPage())),
+              ),
+            ),
+          PopupMenuItem(
+            value: 'logout',
+            child: const Row(
+              children: [
+                Icon(Icons.logout_rounded, size: 20, color: AppTheme.errorColor),
+                SizedBox(width: 12),
+                Text('Çıkış Yap', style: TextStyle(color: AppTheme.errorColor)),
+              ],
+            ),
+            onTap: () => authProvider.signOut().then((_) => Navigator.of(context).pushReplacementNamed('/login')),
+          ),
+        ];
+      },
+    );
+  }
+
+  Widget _buildStatsSection(CustomerProvider provider) {
+    return Row(
+      children: [
+        _statCard(
+          context,
+          'Toplam',
+          '${provider.customers.length}',
+          Icons.people_alt_rounded,
+          AppTheme.primaryColor,
+        ),
+        const SizedBox(width: 16),
+        _statCard(
+          context,
+          'Favori',
+          '${provider.customers.where((c) => c.isFavorite).length}',
+          Icons.favorite_rounded,
+          AppTheme.secondaryColor,
+        ),
+      ],
+    );
+  }
+
+  Widget _statCard(BuildContext context, String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(height: 16),
+            Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 4),
+            Text(value, style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddButton(BuildContext context) {
+    return InkWell(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddCustomerPage())),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.add_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 6),
+            Text('Ekle', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(CustomerProvider provider) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (v) => setState(() => provider.searchQuery = v),
+        decoration: InputDecoration(
+          hintText: 'Müşteri, e-posta veya telefon ara...',
+          prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          suffixIcon: _searchController.text.isNotEmpty 
+            ? IconButton(
+                icon: const Icon(Icons.close_rounded, size: 18),
+                onPressed: () { _searchController.clear(); provider.searchQuery = ''; setState(() {}); },
+              )
+            : null,
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilter(CustomerProvider provider) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          _filterChip(
+            'Hepsi', 
+            provider.selectedCategory == null, 
+            () => provider.selectedCategory = null
+          ),
+          ...CustomerCategory.values.map((c) => _filterChip(
+            _getCategoryName(c), 
+            provider.selectedCategory == c, 
+            () => provider.selectedCategory = c
+          )),
+          const SizedBox(width: 8),
+          VerticalDivider(color: Colors.grey.shade300, indent: 8, endIndent: 8),
+          const SizedBox(width: 8),
+          _filterChip(
+            'Sadece Favoriler', 
+            provider.showOnlyFavorites, 
+            () => provider.showOnlyFavorites = !provider.showOnlyFavorites,
+            icon: provider.showOnlyFavorites ? Icons.favorite_rounded : Icons.favorite_outline_rounded
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, bool isSelected, VoidCallback onTap, {IconData? icon}) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label),
+        avatar: icon != null ? Icon(icon, size: 16, color: isSelected ? Colors.white : AppTheme.primaryColor) : null,
+        selected: isSelected,
+        onSelected: (_) => onTap(),
+        backgroundColor: Colors.white,
+        selectedColor: AppTheme.primaryColor,
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : AppTheme.primaryColor,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          fontSize: 12,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200),
+        ),
+        showCheckmark: false,
+      ),
+    );
+  }
+
+  Widget _buildCustomerList(CustomerProvider provider, AuthProvider authProvider) {
+    if (provider.isLoading) {
+      return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+    }
+
+    if (provider.filteredCustomers.isEmpty) {
+      return SliverFillRemaining(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_search_rounded, size: 64, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            Text('Sonuç Bulunamadı', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+            Text('Filtreleri veya aramayı değiştirmeyi deneyin.', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+          ],
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final customer = provider.filteredCustomers[index];
+            return CustomerListTile(
+              customer: customer,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomerDetailPage(customer: customer))),
+              onToggleFavorite: () => provider.toggleFavorite(customer.id),
+              onEdit: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AddCustomerPage(customer: customer))),
+              onDelete: () => _confirmDelete(context, provider, customer),
+            );
+          },
+          childCount: provider.filteredCustomers.length,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, CustomerProvider provider, Customer customer) async {
+    final confirm = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(32),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor, size: 48),
+            const SizedBox(height: 16),
+            const Text('Müşteriyi Sil?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('${customer.name} isimli müşteriyi silmek istediğinize emin misiniz?', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('İptal'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Sil'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirm == true) await provider.deleteCustomer(customer.id);
+  }
+}
+ 

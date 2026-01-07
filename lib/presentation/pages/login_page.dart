@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:animations/animations.dart';
 import '../providers/auth_provider.dart';
+import '../../core/theme/app_theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -50,7 +52,9 @@ class _LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -60,123 +64,171 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Form(
-                key: _formKey,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppTheme.primaryColor.withOpacity(0.05),
+              Colors.white,
+              AppTheme.secondaryColor.withOpacity(0.05),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 450),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(
-                      Icons.business_center,
-                      size: 80,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 32),
-                    Text(
-                      _isLogin ? 'CRM Giriş' : 'Kayıt Ol',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 32),
-                    if (!_isLogin) ...[
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: 'İsim',
-                          prefixIcon: const Icon(Icons.person_outline),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'İsim giriniz' : null,
+                    // Brand Identity
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(height: 16),
-                    ],
-                    TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        labelText: 'E-posta',
-                        prefixIcon: const Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      child: const Icon(
+                        Icons.insights_rounded,
+                        size: 64,
+                        color: AppTheme.primaryColor,
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'E-posta giriniz';
-                        }
-                        if (!value.contains('@')) {
-                          return 'Geçerli bir e-posta adresi giriniz';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Şifre',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                          ),
-                          onPressed: () {
-                            setState(() => _obscurePassword = !_obscurePassword);
-                          },
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Şifre giriniz';
-                        }
-                        if (value.length < 6) {
-                          return 'Şifre en az 6 karakter olmalı';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 24),
-                    Consumer<AuthProvider>(
-                      builder: (context, authProvider, _) {
-                        return SizedBox(
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: authProvider.isLoading ? null : _handleSubmit,
-                            style: ElevatedButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: authProvider.isLoading
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : Text(
-                                    _isLogin ? 'Giriş Yap' : 'Kayıt Ol',
-                                    style: const TextStyle(fontSize: 16),
-                                  ),
+                    Text(
+                      'Antigravity CRM',
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.5,
                           ),
+                    ),
+                    Text(
+                      'Müşteri İlişkilerinde Yeni Nesil',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey.shade600,
+                          ),
+                    ),
+                    const SizedBox(height: 48),
+
+                    // Login/Register Card
+                    PageTransitionSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      transitionBuilder: (child, primaryAnimation, secondaryAnimation) {
+                        return SharedAxisTransition(
+                          animation: primaryAnimation,
+                          secondaryAnimation: secondaryAnimation,
+                          transitionType: SharedAxisTransitionType.horizontal,
+                          child: child,
                         );
                       },
+                      child: Card(
+                        key: ValueKey<bool>(_isLogin),
+                        elevation: 0,
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          side: BorderSide(color: Colors.grey.shade100),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  _isLogin ? 'Hoş Geldiniz' : 'Hesap Oluşturun',
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _isLogin 
+                                    ? 'Devam etmek için giriş yapın.' 
+                                    : 'Bilgilerinizi girerek kayıt olun.',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: 32),
+                                
+                                if (!_isLogin) ...[
+                                  TextFormField(
+                                    controller: _nameController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Tam İsim',
+                                      prefixIcon: Icon(Icons.person_outline_rounded),
+                                    ),
+                                    validator: (value) =>
+                                        value == null || value.isEmpty ? 'İsim giriniz' : null,
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+                                
+                                TextFormField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: const InputDecoration(
+                                    labelText: 'E-posta',
+                                    prefixIcon: Icon(Icons.alternate_email_rounded),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) return 'E-posta giriniz';
+                                    if (!value.contains('@')) return 'Geçerli e-posta giriniz';
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                
+                                TextFormField(
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  decoration: InputDecoration(
+                                    labelText: 'Şifre',
+                                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                        size: 20,
+                                      ),
+                                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) return 'Şifre giriniz';
+                                    if (value.length < 6) return 'En az 6 karakter';
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 32),
+                                
+                                Consumer<AuthProvider>(
+                                  builder: (context, authProvider, _) {
+                                    return ElevatedButton(
+                                      onPressed: authProvider.isLoading ? null : _handleSubmit,
+                                      child: authProvider.isLoading
+                                          ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : Text(_isLogin ? 'Giriş Yap' : 'Kayıt Ol'),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    
+                    const SizedBox(height: 24),
+                    
                     TextButton(
                       onPressed: () {
                         setState(() {
@@ -184,10 +236,14 @@ class _LoginPageState extends State<LoginPage> {
                           _formKey.currentState?.reset();
                         });
                       },
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.primaryColor,
+                      ),
                       child: Text(
                         _isLogin
-                            ? 'Hesabınız yok mu? Kayıt olun'
+                            ? 'Hesabınız yok mu? Ücretsiz Kaydolun'
                             : 'Zaten hesabınız var mı? Giriş yapın',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -200,4 +256,5 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+
 

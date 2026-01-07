@@ -10,10 +10,6 @@ service cloud.firestore {
     
     // Helper function: Kullanıcının rolünü al (güvenli)
     function getUserRole() {
-      // Önce authentication kontrolü yap
-      if (!isAuthenticated()) {
-        return 'viewer'; // Giriş yapmamışsa varsayılan rol
-      }
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
       return userDoc != null && userDoc.data.role != null 
         ? userDoc.data.role 
@@ -30,12 +26,22 @@ service cloud.firestore {
       return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'agent');
     }
     
-    // Users koleksiyonu: Kullanıcılar sadece kendi verilerini okuyabilir, admin herkesi görebilir
+    // Users koleksiyonu: Admin role alanını güncelleyebilir
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin()); 
+      // Not: Client side sadece kendi verisini güncellemeli, admin rolü değiştirebilir
+      // Daha detaylı rule validasyonu eklenebilir ama şu an için MVP yeterli
+      
       allow delete: if isAdmin();
+    }
+    
+    // Audit Logs: Sadece authenticated kullanıcılar yazabilir (server-side logic gibi düşünülse de client yazıyor), sadece admin okuyabilir
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated(); // Herkes kendi aksiyonunu loglar
+      allow update, delete: if false; // Loglar değiştirilemez
     }
     
     // Customers koleksiyonu: Rol bazlı erişim
