@@ -9,6 +9,7 @@ import 'presentation/providers/customer_provider.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/user_management_provider.dart';
+import 'presentation/providers/audit_provider.dart';
 import 'presentation/pages/customer_page.dart';
 import 'presentation/pages/login_page.dart';
 import 'core/theme/app_theme.dart';
@@ -51,6 +52,9 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => UserManagementProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AuditProvider(),
         ),
       ],
       child: Consumer2<ThemeProvider, AuthProvider>(

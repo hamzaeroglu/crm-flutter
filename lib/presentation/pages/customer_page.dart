@@ -7,11 +7,13 @@ import '../providers/customer_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/auth_provider.dart';
 import '../../core/utils/permission_helper.dart';
+import '../../core/utils/responsive_util.dart';
 import '../../core/theme/app_theme.dart';
 import '../domain/entities/customer.dart';
 import 'add_customer_page.dart';
 import 'customer_detail_page.dart';
 import 'user_management_page.dart';
+import 'audit_log_page.dart';
 
 class CustomerPage extends StatefulWidget {
   const CustomerPage({Key? key}) : super(key: key);
@@ -56,95 +58,137 @@ class _CustomerPageState extends State<CustomerPage> {
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // Premium Animated AppBar
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 120,
-            backgroundColor: Colors.white,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              title: Text(
-                'CRM Dashboard',
-                style: GoogleFonts.poppins(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
+      body: RefreshIndicator(
+        onRefresh: () async => await customerProvider.fetchCustomers(),
+        edgeOffset: 120, // To start below the expanded app bar if needed, but usually default is fine
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          slivers: [
+            // Premium Animated AppBar
+            SliverAppBar(
+              pinned: true,
+              expandedHeight: 120,
+              backgroundColor: Colors.white,
+              elevation: 0,
+              flexibleSpace: FlexibleSpaceBar(
+                titlePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                title: Text(
+                  'CRM Dashboard',
+                  style: GoogleFonts.outfit(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                  ),
+                ),
+                centerTitle: false,
+              ),
+              actions: [
+                _buildActionMenu(context, authProvider),
+                const SizedBox(width: 12),
+              ],
+            ),
+  
+            // Dashboard Content
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Stats Highlights
+                    _buildStatsSection(customerProvider),
+                    const SizedBox(height: 32),
+                    
+                    // Section Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Müşteri Listesi',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Toplam ${customerProvider.customers.length} kayıt bulundu',
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                        if (PermissionHelper.canCreateCustomer(authProvider.userRole))
+                          _buildAddButton(context),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+  
+                    // Modern Search Bar
+                    _buildSearchBar(customerProvider),
+                    const SizedBox(height: 16),
+  
+                    // Horizontal Category Filter
+                    _buildCategoryFilter(customerProvider),
+                    const SizedBox(height: 16),
+                  ],
                 ),
               ),
-              centerTitle: false,
             ),
-            actions: [
-              _buildActionMenu(context, authProvider),
-              const SizedBox(width: 12),
-            ],
-          ),
-
-          // Dashboard Content
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Stats Highlights
-                  _buildStatsSection(customerProvider),
-                  const SizedBox(height: 32),
-                  
-                  // Section Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Müşteri Listesi',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                      if (PermissionHelper.canCreateCustomer(authProvider.userRole))
-                        _buildAddButton(context),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Modern Search Bar
-                  _buildSearchBar(customerProvider),
-                  const SizedBox(height: 16),
-
-                  // Horizontal Category Filter
-                  _buildCategoryFilter(customerProvider),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
-          ),
-
-          // List Content
-          _buildCustomerList(customerProvider, authProvider),
-          
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-        ],
+  
+            // List Content
+            _buildCustomerList(customerProvider, authProvider),
+            
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildActionMenu(BuildContext context, AuthProvider authProvider) {
     return PopupMenuButton<String>(
+      offset: const Offset(0, 50),
       icon: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: AppTheme.primaryColor.withOpacity(0.05),
           shape: BoxShape.circle,
         ),
-        child: const Icon(Icons.menu_rounded, color: AppTheme.primaryColor, size: 20),
+        child: const Icon(Icons.person_rounded, color: AppTheme.primaryColor, size: 20),
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       itemBuilder: (context) {
         final isAdmin = authProvider.userRole == UserRole.admin;
         return [
+          PopupMenuItem(
+            enabled: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  authProvider.userName ?? 'Kullanıcı',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor, fontSize: 16),
+                ),
+                Text(
+                  authProvider.user?.email ?? '',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(top: 8, bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    authProvider.userRole.name.toUpperCase(),
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                  ),
+                ),
+                const Divider(),
+              ],
+            ),
+          ),
           if (isAdmin)
             PopupMenuItem(
               value: 'users',
@@ -158,6 +202,21 @@ class _CustomerPageState extends State<CustomerPage> {
               onTap: () => Future.delayed(
                 const Duration(milliseconds: 100),
                 () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UserManagementPage())),
+              ),
+            ),
+          if (isAdmin)
+            PopupMenuItem(
+              value: 'audit',
+              child: const Row(
+                children: [
+                  Icon(Icons.history_rounded, size: 20),
+                  SizedBox(width: 12),
+                  Text('Denetim Kayıtları'),
+                ],
+              ),
+              onTap: () => Future.delayed(
+                const Duration(milliseconds: 100),
+                () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuditLogPage())),
               ),
             ),
           PopupMenuItem(
@@ -201,34 +260,42 @@ class _CustomerPageState extends State<CustomerPage> {
   Widget _statCard(BuildContext context, String label, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: AppTheme.softShadow,
+          border: Border.all(color: Colors.grey.shade50),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 16),
-            Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 20),
+            Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(value, style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+            Text(
+              label,
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),
@@ -236,20 +303,36 @@ class _CustomerPageState extends State<CustomerPage> {
   }
 
   Widget _buildAddButton(BuildContext context) {
-    return InkWell(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddCustomerPage())),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppTheme.primaryColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Row(
-          children: [
-            Icon(Icons.add_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 6),
-            Text('Ekle', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddCustomerPage())),
+          borderRadius: BorderRadius.circular(16),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Yeni Ekle',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -322,7 +405,7 @@ class _CustomerPageState extends State<CustomerPage> {
 
   Widget _filterChip(String label, bool isSelected, VoidCallback onTap, {IconData? icon}) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.only(right: 12),
       child: FilterChip(
         label: Text(label),
         avatar: icon != null ? Icon(icon, size: 16, color: isSelected ? Colors.white : AppTheme.primaryColor) : null,
@@ -330,13 +413,16 @@ class _CustomerPageState extends State<CustomerPage> {
         onSelected: (_) => onTap(),
         backgroundColor: Colors.white,
         selectedColor: AppTheme.primaryColor,
+        elevation: 0,
+        pressElevation: 0,
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : AppTheme.primaryColor,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-          fontSize: 12,
+          color: isSelected ? Colors.white : AppTheme.textPrimary,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+          fontSize: 13,
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200),
         ),
         showCheckmark: false,
@@ -365,21 +451,36 @@ class _CustomerPageState extends State<CustomerPage> {
 
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final customer = provider.filteredCustomers[index];
-            return CustomerListTile(
-              customer: customer,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomerDetailPage(customer: customer))),
-              onToggleFavorite: () => provider.toggleFavorite(customer.id),
-              onEdit: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AddCustomerPage(customer: customer))),
-              onDelete: () => _confirmDelete(context, provider, customer),
-            );
-          },
-          childCount: provider.filteredCustomers.length,
-        ),
-      ),
+      sliver: ResponsiveUtil.isWide(context) 
+        ? SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: ResponsiveUtil.isDesktop(context) ? 3 : 2,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 2.2,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _itemBuilder(context, provider, index),
+              childCount: provider.filteredCustomers.length,
+            ),
+          )
+        : SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _itemBuilder(context, provider, index),
+              childCount: provider.filteredCustomers.length,
+            ),
+          ),
+    );
+  }
+
+  Widget _itemBuilder(BuildContext context, CustomerProvider provider, int index) {
+    final customer = provider.filteredCustomers[index];
+    return CustomerListTile(
+      customer: customer,
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomerDetailPage(customer: customer))),
+      onToggleFavorite: () => provider.toggleFavorite(customer.id),
+      onEdit: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AddCustomerPage(customer: customer))),
+      onDelete: () => _confirmDelete(context, provider, customer),
     );
   }
 
@@ -387,40 +488,48 @@ class _CustomerPageState extends State<CustomerPage> {
     final confirm = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(32),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor, size: 48),
-            const SizedBox(height: 16),
-            const Text('Müşteriyi Sil?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text('${customer.name} isimli müşteriyi silmek istediğinize emin misiniz?', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('İptal'),
-                  ),
+      builder: (context) => SingleChildScrollView(
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor, size: 48),
+              const SizedBox(height: 16),
+              const Text('Müşteriyi Sil?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Flexible(
+                child: Text(
+                  '${customer.name} isimli müşteriyi silmek istediğinize emin misiniz?', 
+                  textAlign: TextAlign.center, 
+                  style: TextStyle(color: Colors.grey.shade600)
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Sil'),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('İptal'),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Sil'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

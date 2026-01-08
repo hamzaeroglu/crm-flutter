@@ -9,10 +9,12 @@ class AuthProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   User? _user;
+  String? _userName;
   UserRole _userRole = UserRole.viewer;
   bool _isLoading = false;
 
   User? get user => _user;
+  String? get userName => _userName;
   UserRole get userRole => _userRole;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null;
@@ -21,28 +23,33 @@ class AuthProvider extends ChangeNotifier {
     _auth.authStateChanges().listen((User? user) {
       _user = user;
       if (user != null) {
-        _loadUserRole(user.uid);
+        _loadUserData(user.uid);
       } else {
+        _userName = null;
         _userRole = UserRole.viewer;
       }
       notifyListeners();
     });
   }
 
-  Future<void> _loadUserRole(String uid) async {
+  Future<void> _loadUserData(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
       if (doc.exists) {
-        final roleString = doc.data()?['role'] as String? ?? 'viewer';
+        final data = doc.data();
+        _userName = data?['name'] as String?;
+        final roleString = data?['role'] as String? ?? 'viewer';
         _userRole = _roleFromString(roleString);
       } else {
         // İlk girişte varsayılan rol viewer
+        _userName = _user?.displayName;
         _userRole = UserRole.viewer;
         await _firestore.collection('users').doc(uid).set({
           'role': 'viewer',
           'email': _user?.email,
+          'name': _userName,
           'createdAt': FieldValue.serverTimestamp(),
-        });
+        }, SetOptions(merge: true));
       }
       notifyListeners();
     } catch (e) {

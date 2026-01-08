@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../domain/entities/customer.dart';
 import '../providers/customer_provider.dart';
 import '../providers/auth_provider.dart';
 import '../../core/utils/permission_helper.dart';
+import '../../core/utils/responsive_util.dart';
 import '../../core/theme/app_theme.dart';
 import 'add_customer_page.dart';
 
@@ -76,7 +78,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [AppTheme.primaryColor, AppTheme.primaryColor.withBlue(150)],
+                        colors: [AppTheme.primaryColor, AppTheme.accentColor],
                       ),
                     ),
                     child: Center(
@@ -84,12 +86,19 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
                         padding: const EdgeInsets.only(top: 40),
                         child: Hero(
                           tag: 'avatar_${customer.id}',
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            child: Text(
-                              customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?',
-                              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+                          child: Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
+                            ),
+                            child: Center(
+                              child: Text(
+                                customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?',
+                                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
                             ),
                           ),
                         ),
@@ -98,7 +107,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
                   ),
                   title: Text(
                     customer.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
                   ),
                   centerTitle: true,
                 ),
@@ -113,21 +122,37 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Contact Info Card
-                      _buildInfoCard(context, provider, customer),
-                      const SizedBox(height: 24),
-                      
-                      // Tags Section
-                      _buildTagsSection(context, provider, customer),
-                      const SizedBox(height: 24),
-
-                      // Notes Section
-                      _buildNotesSection(context, provider, customer),
-                    ],
-                  ),
+                  child: ResponsiveUtil.isWide(context)
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 4,
+                            child: _buildInfoCard(context, provider, customer),
+                          ),
+                          const SizedBox(width: 24),
+                          Expanded(
+                            flex: 6,
+                            child: Column(
+                              children: [
+                                _buildTagsSection(context, provider, customer),
+                                const SizedBox(height: 24),
+                                _buildNotesSection(context, provider, customer),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildInfoCard(context, provider, customer),
+                          const SizedBox(height: 24),
+                          _buildTagsSection(context, provider, customer),
+                          const SizedBox(height: 24),
+                          _buildNotesSection(context, provider, customer),
+                        ],
+                      ),
                 ),
               ),
             ],
@@ -170,13 +195,11 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
 
   Widget _buildInfoCard(BuildContext context, CustomerProvider provider, Customer customer) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10)),
-        ],
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: AppTheme.softShadow,
       ),
       child: Column(
         children: [
@@ -254,8 +277,12 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
         Text('Etiketler', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white, 
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: AppTheme.softShadow,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -304,7 +331,14 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
         ...customer.notes.asMap().entries.map((e) => Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade100)),
+          decoration: BoxDecoration(
+            color: Colors.white, 
+            borderRadius: BorderRadius.circular(20), 
+            border: Border.all(color: Colors.grey.shade50),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 4)),
+            ],
+          ),
           child: Row(
             children: [
               const Icon(Icons.notes_rounded, color: Colors.grey, size: 20),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/user_management_provider.dart';
 import '../providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/responsive_util.dart';
 
 class UserManagementPage extends StatefulWidget {
   const UserManagementPage({Key? key}) : super(key: key);
@@ -54,72 +55,90 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
           return RefreshIndicator(
             onRefresh: () async => await provider.fetchUsers(),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(24),
-              itemCount: provider.users.length,
-              itemBuilder: (context, index) {
-                final user = provider.users[index];
-                final email = user['email'] ?? 'E-posta yok';
-                final currentRole = user['role'] ?? 'viewer';
-                final uid = user['uid'] ?? '';
-                final name = user['name'] ?? 'Kullanıcı';
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withOpacity(0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                    border: Border.all(color: Colors.grey.shade100),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : '?',
-                            style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryColor,
-                                ),
-                              ),
-                              Text(
-                                email,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        _buildRolePicker(context, provider, uid, email, currentRole),
-                      ],
+            child: ResponsiveUtil.isWide(context)
+                ? GridView.builder(
+                    padding: const EdgeInsets.all(24),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: ResponsiveUtil.isDesktop(context) ? 3 : 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 3.5,
                     ),
+                    itemCount: provider.users.length,
+                    itemBuilder: (context, index) => _userCardBuilder(context, provider, index),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(24),
+                    itemCount: provider.users.length,
+                    itemBuilder: (context, index) => _userCardBuilder(context, provider, index),
                   ),
-                );
-              },
-            ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _userCardBuilder(BuildContext context, UserManagementProvider provider, int index) {
+    final user = provider.users[index];
+    final email = user['email'] ?? 'E-posta yok';
+    final currentRole = user['role'] ?? 'viewer';
+    final uid = user['uid'] ?? '';
+    final name = user['name'] ?? 'Kullanıcı';
+
+    return Container(
+      margin: ResponsiveUtil.isWide(context) ? EdgeInsets.zero : const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+              child: Text(
+                name.isNotEmpty ? name[0].toUpperCase() : '?',
+                style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    email,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            _buildRolePicker(context, provider, uid, email, currentRole),
+          ],
+        ),
       ),
     );
   }
@@ -206,4 +225,3 @@ class _UserManagementPageState extends State<UserManagementPage> {
     }
   }
 }
-

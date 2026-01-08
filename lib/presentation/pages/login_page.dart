@@ -16,6 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _surnameController = TextEditingController();
   bool _isLogin = true;
   bool _obscurePassword = true;
 
@@ -24,6 +25,7 @@ class _LoginPageState extends State<LoginPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
+    _surnameController.dispose();
     super.dispose();
   }
 
@@ -41,7 +43,7 @@ class _LoginPageState extends State<LoginPage> {
         await authProvider.registerWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text,
-          _nameController.text.trim(),
+          '${_nameController.text.trim()} ${_surnameController.text.trim()}',
         );
       }
       if (mounted) {
@@ -153,18 +155,35 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 const SizedBox(height: 32),
                                 
-                                if (!_isLogin) ...[
-                                  TextFormField(
-                                    controller: _nameController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Tam İsim',
-                                      prefixIcon: Icon(Icons.person_outline_rounded),
-                                    ),
-                                    validator: (value) =>
-                                        value == null || value.isEmpty ? 'İsim giriniz' : null,
-                                  ),
-                                  const SizedBox(height: 16),
-                                ],
+                                 if (!_isLogin) ...[
+                                   Row(
+                                     children: [
+                                       Expanded(
+                                         child: TextFormField(
+                                           controller: _nameController,
+                                           decoration: const InputDecoration(
+                                             labelText: 'İsim',
+                                             prefixIcon: Icon(Icons.person_outline_rounded),
+                                           ),
+                                           validator: (value) =>
+                                               value == null || value.isEmpty ? 'Gerekli' : null,
+                                         ),
+                                       ),
+                                       const SizedBox(width: 12),
+                                       Expanded(
+                                         child: TextFormField(
+                                           controller: _surnameController,
+                                           decoration: const InputDecoration(
+                                             labelText: 'Soyisim',
+                                           ),
+                                           validator: (value) =>
+                                               value == null || value.isEmpty ? 'Gerekli' : null,
+                                         ),
+                                       ),
+                                     ],
+                                   ),
+                                   const SizedBox(height: 16),
+                                 ],
                                 
                                 TextFormField(
                                   controller: _emailController,

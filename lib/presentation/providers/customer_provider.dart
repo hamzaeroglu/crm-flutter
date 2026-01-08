@@ -190,6 +190,10 @@ class CustomerProvider extends ChangeNotifier {
         final customer = _customers[customerIndex];
         final updatedCustomer = customer.copyWith(isFavorite: !customer.isFavorite);
         await repository.updateCustomer(updatedCustomer);
+        await _auditService.logAction(
+          action: 'TOGGLE_FAVORITE',
+          details: 'ID: $id, New Status: ${updatedCustomer.isFavorite}',
+        );
         await fetchCustomers();
       }
     } catch (e) {
@@ -204,6 +208,10 @@ class CustomerProvider extends ChangeNotifier {
         final customer = _customers[customerIndex];
         final updatedCustomer = customer.copyWith(category: category);
         await repository.updateCustomer(updatedCustomer);
+        await _auditService.logAction(
+          action: 'UPDATE_CATEGORY',
+          details: 'ID: $id, New Category: ${category.toString().split('.').last}',
+        );
         await fetchCustomers();
       }
     } catch (e) {
@@ -219,6 +227,10 @@ class CustomerProvider extends ChangeNotifier {
         final updatedNotes = [...customer.notes, note];
         final updatedCustomer = customer.copyWith(notes: updatedNotes);
         await repository.updateCustomer(updatedCustomer);
+        await _auditService.logAction(
+          action: 'ADD_NOTE',
+          details: 'ID: $customerId',
+        );
         await fetchCustomers();
       }
     } catch (e) {
@@ -235,6 +247,10 @@ class CustomerProvider extends ChangeNotifier {
         updatedNotes.removeAt(noteIndex);
         final updatedCustomer = customer.copyWith(notes: updatedNotes);
         await repository.updateCustomer(updatedCustomer);
+        await _auditService.logAction(
+          action: 'REMOVE_NOTE',
+          details: 'ID: $customerId',
+        );
         await fetchCustomers();
       }
     } catch (e) {
@@ -251,6 +267,10 @@ class CustomerProvider extends ChangeNotifier {
           final updatedTags = [...customer.tags, tag];
           final updatedCustomer = customer.copyWith(tags: updatedTags);
           await repository.updateCustomer(updatedCustomer);
+          await _auditService.logAction(
+            action: 'ADD_TAG',
+            details: 'ID: $customerId, Tag: $tag',
+          );
           await fetchCustomers();
         }
       }
@@ -268,6 +288,10 @@ class CustomerProvider extends ChangeNotifier {
         updatedTags.remove(tag);
         final updatedCustomer = customer.copyWith(tags: updatedTags);
         await repository.updateCustomer(updatedCustomer);
+        await _auditService.logAction(
+          action: 'REMOVE_TAG',
+          details: 'ID: $customerId, Tag: $tag',
+        );
         await fetchCustomers();
       }
     } catch (e) {

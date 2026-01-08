@@ -10,9 +10,8 @@ service cloud.firestore {
     
     // Helper function: Kullanıcının rolünü al (güvenli)
     function getUserRole() {
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return userDoc != null && userDoc.data.role != null 
-        ? userDoc.data.role 
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role 
         : 'viewer'; // Varsayılan rol
     }
     
@@ -37,11 +36,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
-    // Audit Logs: Sadece authenticated kullanıcılar yazabilir (server-side logic gibi düşünülse de client yazıyor), sadece admin okuyabilir
+    // Audit Logs: Sadece authenticated kullanıcılar yazabilir, sadece admin okuyabilir
     match /audit_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated(); // Herkes kendi aksiyonunu loglar
-      allow update, delete: if false; // Loglar değiştirilemez
+      allow read: if isAuthenticated() && getUserRole() == 'admin';
+      allow create: if isAuthenticated(); 
+      allow update, delete: if false; 
     }
     
     // Customers koleksiyonu: Rol bazlı erişim
