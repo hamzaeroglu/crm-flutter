@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:animations/animations.dart';
 import '../providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../widgets/email_verification_dialog.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -12,7 +13,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
+  final _loginFormKey = GlobalKey<FormState>();
+  final _registerFormKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
@@ -30,7 +32,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final formKey = _isLogin ? _loginFormKey : _registerFormKey;
+    if (!formKey.currentState!.validate()) return;
 
     final authProvider = context.read<AuthProvider>();
     try {
@@ -39,15 +42,84 @@ class _LoginPageState extends State<LoginPage> {
           _emailController.text.trim(),
           _passwordController.text,
         );
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
       } else {
         await authProvider.registerWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text,
           '${_nameController.text.trim()} ${_surnameController.text.trim()}',
         );
+        
+        if (mounted) {
+          // Gelişmiş doğrulama dialogunu göster
+          final verified = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const EmailVerificationDialog(),
+          );
+
+          if (verified == true && mounted) {
+             // Kullanıcı doğrulandı, giriş için hazırla
+             setState(() {
+               _isLogin = true;
+               _passwordController.clear();
+             });
+             
+             // Temiz bir başlangıç için çıkış yap
+             await authProvider.signOut();
+
+             ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('E-posta başarıyla doğrulandı! Şimdi giriş yapabilirsiniz.'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
       }
+    } catch (e) {
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
+        final message = e.toString().replaceFirst('Exception: ', '');
+        final isVerificationError = message.contains('doğrulanmamış') || message.contains('email-not-verified');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: Duration(seconds: isVerificationError ? 5 : 4),
+            action: isVerificationError 
+              ? SnackBarAction(
+                  label: 'Tekrar Gönder',
+                  textColor: Colors.white,
+                  onPressed: () => _resendVerification(),
+                )
+              : null,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _resendVerification() async {
+    final authProvider = context.read<AuthProvider>();
+    try {
+      await authProvider.resendVerificationEmail(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Doğrulama bağlantısı tekrar gönderildi. E-postanızı kontrol edin.'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -56,7 +128,6 @@ class _LoginPageState extends State<LoginPage> {
             content: Text(e.toString().replaceFirst('Exception: ', '')),
             backgroundColor: AppTheme.errorColor,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -101,7 +172,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Antigravity CRM',
+                      'CRM',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
                             color: AppTheme.primaryColor,
                             fontWeight: FontWeight.bold,
@@ -138,7 +209,7 @@ class _LoginPageState extends State<LoginPage> {
                         child: Padding(
                           padding: const EdgeInsets.all(32.0),
                           child: Form(
-                            key: _formKey,
+                            key: _isLogin ? _loginFormKey : _registerFormKey,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -188,6 +259,7 @@ class _LoginPageState extends State<LoginPage> {
                                 TextFormField(
                                   controller: _emailController,
                                   keyboardType: TextInputType.emailAddress,
+                                  autofillHints: const [AutofillHints.email],
                                   decoration: const InputDecoration(
                                     labelText: 'E-posta',
                                     prefixIcon: Icon(Icons.alternate_email_rounded),
@@ -203,6 +275,7 @@ class _LoginPageState extends State<LoginPage> {
                                 TextFormField(
                                   controller: _passwordController,
                                   obscureText: _obscurePassword,
+                                  autofillHints: const [AutofillHints.password],
                                   decoration: InputDecoration(
                                     labelText: 'Şifre',
                                     prefixIcon: const Icon(Icons.lock_outline_rounded),
@@ -252,7 +325,8 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: () {
                         setState(() {
                           _isLogin = !_isLogin;
-                          _formKey.currentState?.reset();
+                          _loginFormKey.currentState?.reset();
+                          _registerFormKey.currentState?.reset();
                         });
                       },
                       style: TextButton.styleFrom(

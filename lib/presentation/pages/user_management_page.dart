@@ -19,7 +19,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<UserManagementProvider>();
       if (provider.users.isEmpty) {
-        provider.fetchUsers();
+        provider.listenToUsers();
       }
     });
   }
@@ -33,6 +33,26 @@ class _UserManagementPageState extends State<UserManagementPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(70),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: TextField(
+              onChanged: (value) => context.read<UserManagementProvider>().searchUsers(value),
+              decoration: InputDecoration(
+                hintText: 'Kullanıcı ara (İsim veya E-posta)',
+                prefixIcon: const Icon(Icons.search_rounded),
+                filled: true,
+                fillColor: AppTheme.backgroundColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+            ),
+          ),
+        ),
       ),
       body: Consumer<UserManagementProvider>(
         builder: (context, provider, _) {
@@ -54,7 +74,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
           }
 
           return RefreshIndicator(
-            onRefresh: () async => await provider.fetchUsers(),
+            onRefresh: () async => provider.listenToUsers(),
             child: ResponsiveUtil.isWide(context)
                 ? GridView.builder(
                     padding: const EdgeInsets.all(24),
@@ -137,6 +157,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
               ),
             ),
             _buildRolePicker(context, provider, uid, email, currentRole),
+            if (provider.users.any((u) => u['role'] == 'admin' && u['uid'] != uid)) // Sadece adminler silebilir ve kendini silemez logic'i eklenebilir ama şimdilik client-side admin check yeterli
+               _buildDeleteButton(context, provider, uid, email, currentRole),
           ],
         ),
       ),
@@ -150,7 +172,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
     String email, 
     String currentRole
   ) {
+    final isAdmin = currentRole.toLowerCase() == 'admin';
+
     return PopupMenuButton<String>(
+      enabled: !isAdmin,
       onSelected: (newRole) async {
         if (newRole != currentRole) {
           try {
@@ -197,7 +222,11 @@ class _UserManagementPageState extends State<UserManagementPage> {
               ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: _getRoleColor(currentRole)),
+            Icon(
+              isAdmin ? Icons.lock_outline_rounded : Icons.keyboard_arrow_down_rounded, 
+              size: 14, 
+              color: _getRoleColor(currentRole)
+            ),
           ],
         ),
       ),
@@ -214,6 +243,64 @@ class _UserManagementPageState extends State<UserManagementPage> {
           Text(label),
         ],
       ),
+    );
+  }
+
+  Widget _buildDeleteButton(
+    BuildContext context, 
+    UserManagementProvider provider, 
+    String uid, 
+    String email, 
+    String currentRole
+  ) {
+    // Mevcut kullanıcı kendini silemesin (opsiyonel güvenlik)
+    final currentUserUid = context.read<AuthProvider>().user?.uid;
+    if (currentUserUid == uid) return const SizedBox.shrink();
+
+    // Sadece adminlerin görebilmesi lazım ama zaten sayfa admin only. 
+    // Yine de güvenlik için AuthProvider kontrolü yapılabilir.
+    
+    return IconButton(
+      icon: Icon(Icons.delete_outline_rounded, color: Colors.grey.shade400, size: 20),
+      onPressed: () {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Kullanıcıyı Sil'),
+            content: Text('$email kullanıcısının veritabanı kaydını silmek üzeresiniz.\n\nNot: Eğer bu kullanıcıyı Firebase Authentication (Giriş) panelinden sildiyseniz, bu işlem ile "hayalet" kaydı temizlemiş olursunuz.\n\nEğer silmediyseniz, kullanıcının giriş yetkisini de ayrıca panelden kapatmalısınız.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('İptal', style: TextStyle(color: Colors.grey)),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  try {
+                    await provider.deleteUser(uid, email);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Kullanıcı başarıyla silindi'),
+                          backgroundColor: Colors.green,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.errorColor),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Sil', style: TextStyle(color: AppTheme.errorColor)),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

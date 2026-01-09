@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/audit_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../providers/auth_provider.dart';
 
 class AuditLogPage extends StatefulWidget {
   const AuditLogPage({Key? key}) : super(key: key);
@@ -33,11 +34,62 @@ class _AuditLogPageState extends State<AuditLogPage> {
       body: Consumer<AuditProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Kayıtlar yükleniyor...', style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+            );
+          }
+
+          if (provider.errorMessage != null) {
+            final authProvider = context.read<AuthProvider>();
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: AppTheme.errorColor, size: 48),
+                  const SizedBox(height: 16),
+                  Text('Hata oluştu:', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(provider.errorMessage!, textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary)),
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                  Text('Hata Ayıklama Bilgisi:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  Text('UID: ${authProvider.user?.uid ?? 'Yok'}', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text('Role: ${authProvider.userRole.name}', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => provider.fetchLogs(),
+                    child: const Text('Tekrar Dene'),
+                    style: ElevatedButton.styleFrom(minimumSize: const Size(120, 48)),
+                  ),
+                ],
+              ),
+            );
           }
 
           if (provider.logs.isEmpty) {
-            return const Center(child: Text('Kayıt bulunamadı'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.info_outline_rounded, color: Colors.grey, size: 48),
+                  const SizedBox(height: 16),
+                  const Text('Kayıt bulunamadı'),
+                  const SizedBox(height: 8),
+                  Text('Hata yoksa henüz işlem kaydı oluşmamış olabilir.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
+            );
           }
 
           return ListView.separated(

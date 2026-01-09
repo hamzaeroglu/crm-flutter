@@ -166,7 +166,7 @@ class CustomerProvider extends ChangeNotifier {
   Future<void> updateCustomer(CustomerModel customer) async {
     try {
       await repository.updateCustomer(customer);
-      await _auditService.logAction(action: 'UPDATE_CUSTOMER', details: 'ID: ${customer.id}');
+      await _auditService.logAction(action: 'UPDATE_CUSTOMER', details: 'Customer: ${customer.name} (${customer.email})');
       await fetchCustomers();
     } catch (e) {
       throw Exception('Müşteri güncellenemedi: $e');
@@ -175,8 +175,10 @@ class CustomerProvider extends ChangeNotifier {
 
   Future<void> deleteCustomer(String id) async {
     try {
+      final customer = findById(id);
+      final name = customer?.name ?? 'Unknown';
       await repository.deleteCustomer(id);
-      await _auditService.logAction(action: 'DELETE_CUSTOMER', details: 'ID: $id');
+      await _auditService.logAction(action: 'DELETE_CUSTOMER', details: 'Customer: $name (ID: $id)');
       await fetchCustomers();
     } catch (e) {
       throw Exception('Müşteri silinemedi: $e');
@@ -190,9 +192,10 @@ class CustomerProvider extends ChangeNotifier {
         final customer = _customers[customerIndex];
         final updatedCustomer = customer.copyWith(isFavorite: !customer.isFavorite);
         await repository.updateCustomer(updatedCustomer);
+        final statusStr = updatedCustomer.isFavorite ? 'favorilere eklendi' : 'favorilerden çıkarıldı';
         await _auditService.logAction(
           action: 'TOGGLE_FAVORITE',
-          details: 'ID: $id, New Status: ${updatedCustomer.isFavorite}',
+          details: 'Müşteri "${customer.name}" $statusStr',
         );
         await fetchCustomers();
       }
@@ -206,16 +209,27 @@ class CustomerProvider extends ChangeNotifier {
       final customerIndex = _customers.indexWhere((c) => c.id == id);
       if (customerIndex != -1) {
         final customer = _customers[customerIndex];
+        final oldCategoryName = _getCategoryName(customer.category);
+        final newCategoryName = _getCategoryName(category);
         final updatedCustomer = customer.copyWith(category: category);
         await repository.updateCustomer(updatedCustomer);
         await _auditService.logAction(
           action: 'UPDATE_CATEGORY',
-          details: 'ID: $id, New Category: ${category.toString().split('.').last}',
+          details: 'Müşteri "${customer.name}" segmenti değiştirildi: $oldCategoryName -> $newCategoryName',
         );
         await fetchCustomers();
       }
     } catch (e) {
       throw Exception('Kategori güncellenemedi: $e');
+    }
+  }
+
+  String _getCategoryName(CustomerCategory category) {
+    switch (category) {
+      case CustomerCategory.active: return 'Aktif';
+      case CustomerCategory.potential: return 'Potansiyel';
+      case CustomerCategory.vip: return 'VIP';
+      case CustomerCategory.inactive: return 'Pasif';
     }
   }
 
@@ -229,7 +243,7 @@ class CustomerProvider extends ChangeNotifier {
         await repository.updateCustomer(updatedCustomer);
         await _auditService.logAction(
           action: 'ADD_NOTE',
-          details: 'ID: $customerId',
+          details: 'Müşteri "${customer.name}" için yeni not eklendi',
         );
         await fetchCustomers();
       }
@@ -249,7 +263,7 @@ class CustomerProvider extends ChangeNotifier {
         await repository.updateCustomer(updatedCustomer);
         await _auditService.logAction(
           action: 'REMOVE_NOTE',
-          details: 'ID: $customerId',
+          details: 'Müşteri "${customer.name}" için bir not silindi',
         );
         await fetchCustomers();
       }
@@ -269,7 +283,7 @@ class CustomerProvider extends ChangeNotifier {
           await repository.updateCustomer(updatedCustomer);
           await _auditService.logAction(
             action: 'ADD_TAG',
-            details: 'ID: $customerId, Tag: $tag',
+            details: 'Müşteri "${customer.name}" için etiket eklendi: $tag',
           );
           await fetchCustomers();
         }
@@ -290,7 +304,7 @@ class CustomerProvider extends ChangeNotifier {
         await repository.updateCustomer(updatedCustomer);
         await _auditService.logAction(
           action: 'REMOVE_TAG',
-          details: 'ID: $customerId, Tag: $tag',
+          details: 'Müşteri "${customer.name}" etiket listesinden çıkarıldı: $tag',
         );
         await fetchCustomers();
       }

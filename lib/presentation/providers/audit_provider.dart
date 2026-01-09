@@ -11,10 +11,15 @@ class AuditProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
+
   Future<void> fetchLogs() async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
     
+    debugPrint('AuditProvider: Fetching logs...');
     try {
       final snapshot = await _firestore
           .collection('audit_logs')
@@ -22,9 +27,11 @@ class AuditProvider extends ChangeNotifier {
           .limit(100)
           .get();
           
+      debugPrint('AuditProvider: Found ${snapshot.docs.length} logs');
       _logs = snapshot.docs.map((doc) => AuditLogModel.fromJson(doc.data(), doc.id)).toList();
     } catch (e) {
-      debugPrint('Error fetching audit logs: $e');
+      _errorMessage = e.toString();
+      debugPrint('AuditProvider: Error fetching audit logs: $e');
     } finally {
       _isLoading = false;
       notifyListeners();

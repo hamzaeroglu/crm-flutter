@@ -25,9 +25,10 @@ class AuditService {
 
     try {
       await _firestore.collection('audit_logs').doc(log.id).set(log.toJson());
+      print('AuditService: Action logged successfully: $action');
     } catch (e) {
       // Loglama hatası uygulamayı durdurmamalı, sadece konsola yazalım
-      print('Audit logging failed: $e');
+      print('AuditService: Audit logging failed: $e');
     }
   }
 }

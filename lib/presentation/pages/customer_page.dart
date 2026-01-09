@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:animations/animations.dart';
 import '../widgets/customer_list_tile.dart';
+import '../widgets/sidebar.dart';
 import '../providers/customer_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/auth_provider.dart';
@@ -58,182 +59,109 @@ class _CustomerPageState extends State<CustomerPage> {
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      body: RefreshIndicator(
-        onRefresh: () async => await customerProvider.fetchCustomers(),
-        edgeOffset: 120, // To start below the expanded app bar if needed, but usually default is fine
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-          slivers: [
-            // Premium Animated AppBar
-            SliverAppBar(
-              pinned: true,
-              expandedHeight: 120,
-              backgroundColor: Colors.white,
-              elevation: 0,
-              flexibleSpace: FlexibleSpaceBar(
-                titlePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                title: Text(
-                  'CRM Dashboard',
-                  style: GoogleFonts.outfit(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 22,
-                  ),
-                ),
-                centerTitle: false,
-              ),
-              actions: [
-                _buildActionMenu(context, authProvider),
-                const SizedBox(width: 12),
-              ],
-            ),
-  
-            // Dashboard Content
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Stats Highlights
-                    _buildStatsSection(customerProvider),
-                    const SizedBox(height: 32),
-                    
-                    // Section Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Müşteri Listesi',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Toplam ${customerProvider.customers.length} kayıt bulundu',
-                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                        if (PermissionHelper.canCreateCustomer(authProvider.userRole))
-                          _buildAddButton(context),
-                      ],
+      drawer: !ResponsiveUtil.isWide(context) ? const Sidebar() : null,
+      appBar: !ResponsiveUtil.isWide(context) 
+        ? AppBar(
+            title: const Text('Dashboard'),
+            backgroundColor: Colors.white,
+            elevation: 0,
+            iconTheme: const IconThemeData(color: AppTheme.textPrimary),
+            titleTextStyle: const TextStyle(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.bold),
+          )
+        : null,
+      body: Row(
+        children: [
+          if (ResponsiveUtil.isWide(context))
+            const Sidebar(),
+          
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => await customerProvider.fetchCustomers(),
+              edgeOffset: ResponsiveUtil.isWide(context) ? 0 : 0,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                slivers: [
+                   // Desktop Header (if needed) or just spacing
+                   if (ResponsiveUtil.isWide(context))
+                     const SliverToBoxAdapter(child: SizedBox(height: 32)),
+
+                  // Dashboard Content
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                           if (ResponsiveUtil.isWide(context)) ...[
+                             Text(
+                               'Hoş Geldiniz, ${authProvider.userName ?? ''} 👋',
+                               style: GoogleFonts.outfit(
+                                 fontSize: 28,
+                                 fontWeight: FontWeight.bold,
+                                 color: AppTheme.textPrimary,
+                               ),
+                             ),
+                             const SizedBox(height: 8),
+                             Text(
+                               'İşte bugünün özeti',
+                               style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+                             ),
+                             const SizedBox(height: 32),
+                           ],
+
+                          // Stats Highlights
+                          _buildStatsSection(customerProvider),
+                          const SizedBox(height: 32),
+                          
+                          // Section Header
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Müşteri Listesi',
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Toplam ${customerProvider.customers.length} kayıt',
+                                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                              if (PermissionHelper.canCreateCustomer(authProvider.userRole))
+                                _buildAddButton(context),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+        
+                          // Modern Search Bar
+                          _buildSearchBar(customerProvider),
+                          const SizedBox(height: 16),
+        
+                          // Horizontal Category Filter
+                          _buildCategoryFilter(customerProvider),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
-  
-                    // Modern Search Bar
-                    _buildSearchBar(customerProvider),
-                    const SizedBox(height: 16),
-  
-                    // Horizontal Category Filter
-                    _buildCategoryFilter(customerProvider),
-                    const SizedBox(height: 16),
-                  ],
-                ),
+                  ),
+        
+                  // List Content
+                  _buildCustomerList(customerProvider, authProvider),
+                  
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
               ),
             ),
-  
-            // List Content
-            _buildCustomerList(customerProvider, authProvider),
-            
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildActionMenu(BuildContext context, AuthProvider authProvider) {
-    return PopupMenuButton<String>(
-      offset: const Offset(0, 50),
-      icon: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(0.05),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(Icons.person_rounded, color: AppTheme.primaryColor, size: 20),
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      itemBuilder: (context) {
-        final isAdmin = authProvider.userRole == UserRole.admin;
-        return [
-          PopupMenuItem(
-            enabled: false,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  authProvider.userName ?? 'Kullanıcı',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor, fontSize: 16),
-                ),
-                Text(
-                  authProvider.user?.email ?? '',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
-                Container(
-                  margin: const EdgeInsets.only(top: 8, bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    authProvider.userRole.name.toUpperCase(),
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
-                  ),
-                ),
-                const Divider(),
-              ],
-            ),
-          ),
-          if (isAdmin)
-            PopupMenuItem(
-              value: 'users',
-              child: const Row(
-                children: [
-                  Icon(Icons.admin_panel_settings_outlined, size: 20),
-                  SizedBox(width: 12),
-                  Text('Kullanıcı Yönetimi'),
-                ],
-              ),
-              onTap: () => Future.delayed(
-                const Duration(milliseconds: 100),
-                () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UserManagementPage())),
-              ),
-            ),
-          if (isAdmin)
-            PopupMenuItem(
-              value: 'audit',
-              child: const Row(
-                children: [
-                  Icon(Icons.history_rounded, size: 20),
-                  SizedBox(width: 12),
-                  Text('Denetim Kayıtları'),
-                ],
-              ),
-              onTap: () => Future.delayed(
-                const Duration(milliseconds: 100),
-                () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuditLogPage())),
-              ),
-            ),
-          PopupMenuItem(
-            value: 'logout',
-            child: const Row(
-              children: [
-                Icon(Icons.logout_rounded, size: 20, color: AppTheme.errorColor),
-                SizedBox(width: 12),
-                Text('Çıkış Yap', style: TextStyle(color: AppTheme.errorColor)),
-              ],
-            ),
-            onTap: () => authProvider.signOut().then((_) => Navigator.of(context).pushReplacementNamed('/login')),
-          ),
-        ];
-      },
-    );
-  }
 
   Widget _buildStatsSection(CustomerProvider provider) {
     return Row(
@@ -457,7 +385,7 @@ class _CustomerPageState extends State<CustomerPage> {
               crossAxisCount: ResponsiveUtil.isDesktop(context) ? 3 : 2,
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: 2.2,
+              mainAxisExtent: 200, // Fixed height to prevent overflow
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) => _itemBuilder(context, provider, index),

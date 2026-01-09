@@ -19,8 +19,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  // Simple Secure Start: Force logout on app launch
-  await FirebaseAuth.instance.signOut();
   
   runApp(const MyApp());
 }
@@ -60,7 +58,7 @@ class MyApp extends StatelessWidget {
       child: Consumer2<ThemeProvider, AuthProvider>(
         builder: (context, ThemeProvider themeProvider, AuthProvider authProvider, _) {
           return MaterialApp(
-            title: 'CRM Project',
+            title: 'CRM',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             themeMode: ThemeMode.light, // Tasarım oturana kadar açık mod zorunlu
@@ -68,7 +66,7 @@ class MyApp extends StatelessWidget {
               '/login': (_) => const LoginPage(),
               '/home': (_) => const CustomerPage(),
             },
-            home: authProvider.isAuthenticated
+            home: authProvider.isAuthenticated && authProvider.isEmailVerified
                 ? const CustomerPage()
                 : const LoginPage(),
           );

@@ -8,24 +8,13 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Helper function: Kullanıcının rolünü al (güvenli)
-    function getUserRole() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role 
-        : 'viewer'; // Varsayılan rol
-    }
-    
-    // Helper function: Admin mi?
+    // Helper function: Admin mi? (GÜVENLİ - Recursion olmadan)
     function isAdmin() {
-      return isAuthenticated() && getUserRole() == 'admin';
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    // Helper function: Admin veya Agent mi?
-    function isAdminOrAgent() {
-      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'agent');
-    }
-    
-    // Users koleksiyonu: Admin role alanını güncelleyebilir
+    // Users koleksiyonu: Recursion'ı engellemek için kendi dokümanına erişim sadeleştirildi
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow create: if isAuthenticated() && request.auth.uid == userId;
@@ -38,7 +27,7 @@ service cloud.firestore {
     
     // Audit Logs: Sadece authenticated kullanıcılar yazabilir, sadece admin okuyabilir
     match /audit_logs/{logId} {
-      allow read: if isAuthenticated() && getUserRole() == 'admin';
+      allow read: if isAdmin();
       allow create: if isAuthenticated(); 
       allow update, delete: if false; 
     }
@@ -48,11 +37,9 @@ service cloud.firestore {
       // Okuma: Tüm authenticated kullanıcılar okuyabilir
       allow read: if isAuthenticated();
       
-      // Oluşturma: Admin ve Agent yapabilir
-      allow create: if isAdminOrAgent();
-      
-      // Güncelleme: Admin ve Agent yapabilir
-      allow update: if isAdminOrAgent();
+      // Oluşturma ve Güncelleme: Admin ve Agent yapabilir
+      allow create, update: if isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'agent']);
       
       // Silme: Sadece Admin yapabilir
       allow delete: if isAdmin();

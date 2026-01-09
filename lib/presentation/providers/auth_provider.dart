@@ -18,6 +18,7 @@ class AuthProvider extends ChangeNotifier {
   UserRole get userRole => _userRole;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null;
+  bool get isEmailVerified => _user?.emailVerified ?? false;
 
   AuthProvider() {
     _auth.authStateChanges().listen((User? user) {
@@ -73,7 +74,15 @@ class AuthProvider extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final credential = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      
+      if (credential.user != null && !credential.user!.emailVerified) {
+        await _auth.signOut();
+        throw FirebaseAuthException(
+          code: 'email-not-verified',
+          message: 'E-posta adresi doğrulanmamış. Lütfen e-postanızı kontrol edin.',
+        );
+      }
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
@@ -82,6 +91,16 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> reloadUser() async {
+    await _user?.reload();
+    _user = _auth.currentUser;
+    notifyListeners();
+  }
+
+  Future<void> sendEmailVerification() async {
+    await _user?.sendEmailVerification();
   }
 
   Future<void> registerWithEmailAndPassword(
@@ -98,6 +117,9 @@ class AuthProvider extends ChangeNotifier {
       );
       
       if (credential.user != null) {
+        // Doğrulama maili gönder
+        await credential.user!.sendEmailVerification();
+
         // Kullanıcı bilgilerini Firestore'a kaydet
         await _firestore.collection('users').doc(credential.user!.uid).set({
           'email': email,
@@ -105,11 +127,43 @@ class AuthProvider extends ChangeNotifier {
           'role': 'viewer', // Varsayılan rol
           'createdAt': FieldValue.serverTimestamp(),
         });
+
+        // Kullanıcıyı hemen giriş yapmış sayma, doğrulama beklenecek
+        // UI tarafında dialog gösterilecek ve orada polling yapılacak
+        // await _auth.signOut(); // Polling için oturum açık kalmalı
       }
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
       throw Exception('Kayıt olurken bir hata oluştu: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> resendVerificationEmail(String email, String password) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      // Geçici giriş yap
+      final credential = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      
+      if (credential.user != null) {
+        if (credential.user!.emailVerified) {
+          // Zaten doğrulanmışsa çıkış yap ve bilgi ver
+          await _auth.signOut();
+          throw Exception('E-posta adresi zaten doğrulanmış. Giriş yapabilirsiniz.');
+        }
+        
+        await credential.user!.sendEmailVerification();
+        await _auth.signOut();
+      }
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception('Doğrulama maili gönderilemedi: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -141,6 +195,8 @@ class AuthProvider extends ChangeNotifier {
         return 'Geçersiz e-posta adresi';
       case 'user-disabled':
         return 'Bu kullanıcı hesabı devre dışı bırakılmış';
+      case 'email-not-verified':
+        return 'E-posta adresi henüz doğrulanmamış';
       default:
         return 'Bir hata oluştu: ${e.message}';
     }
