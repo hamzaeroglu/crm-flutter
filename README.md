@@ -54,20 +54,6 @@ Proje, aşağıdaki katmanlara ayrılmış temiz bir mimari (clean architecture)
 - **Domain/Data (Veri) Katmanı:** Repository'ler ve Servisler.
 - **Core (Çekirdek):** Yardımcı araçlar, Sabitler ve Temalar.
 
-## 🚦 Kurulum
-
-1. **Repoyu klonlayın:**
-   ```bash
-   git clone https://github.com/kullaniciadiniz/crm-app.git
-   ```
-2. **Bağımlılıkları yükleyin:**
-   ```bash
-   flutter pub get
-   ```
-3. **Uygulamayı çalıştırın:**
-   ```bash
-   flutter run
-   ```
 
 ---
 
@@ -126,20 +112,6 @@ The project follows a clean architecture pattern separating:
 - **Domain/Data Layer:** Repositories and Services.
 - **Core:** Utilities, Constants, and Themes.
 
-## 🚦 Getting Started
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/yourusername/crm-app.git
-   ```
-2. **Install dependencies:**
-   ```bash
-   flutter pub get
-   ```
-3. **Run the app:**
-   ```bash
-   flutter run
-   ```
 
 ## 📄 License
 
