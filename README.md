@@ -112,7 +112,3 @@ The project follows a clean architecture pattern separating:
 - **Domain/Data Layer:** Repositories and Services.
 - **Core:** Utilities, Constants, and Themes.
 
-
-## 📄 License
-
-This project is open-source and available under the [MIT License](LICENSE).
