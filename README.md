@@ -1,146 +1,75 @@
-[🇹🇷 Türkçe](#-crm-müşteri-ilişkileri-yönetimi-uygulaması) | [🇬🇧 English](#-crm-customer-relationship-management-application)
+[🇹🇷 Türkçe](#proje-özeti) | [🇬🇧 English](#project-overview)
 
 ---
 
-# 🇹🇷 CRM (Müşteri İlişkileri Yönetimi) Uygulaması
+# CRM (Müşteri İlişkileri Yönetimi)
 
-**Flutter** ve **Firebase** ile geliştirilmiş profesyonel, güvenli ve modern bir CRM uygulaması. Öne çıkan özellikler arasında gerçek zamanlı iş birliği, rol tabanlı erişim kontrolü (RBAC) ve duyarlı denetim kaydı sistemi bulunur.
+## Proje Özeti
+Bu proje, küçük ve orta ölçekli ekiplerin müşteri ilişkilerini, kullanıcı yetkilerini ve denetim süreçlerini yönetebilmesi için geliştirilmiş, gerçek zamanlı bir mobil/web uygulamasıdır. Projenin temel amacı, ölçeklenebilir bir veri mimarisi ve güvenli bir yetki yönetim sistemi (RBAC) üzerine kurulu, performanslı bir arayüz sunmaktır.
 
-![Project Banner](screenshots/dashboard_desktop.png)
+## Teknik Öne Çıkanlar
 
-## 🚀 Öne Çıkan Özellikler
+### 1. Rol Tabanlı Erişim Kontrolü (RBAC) ve Güvenlik
+Uygulama güvenliği sadece ön yüzde değil, veritabanı seviyesinde sağlanmıştır.
+- **Firestore Security Rules:** `request.auth` ve `get()` fonksiyonları kullanılarak yazılan kurallar ile, kullanıcıların (Viewer, Agent, Admin) sadece kendi yetki seviyelerindeki verilere erişmesi garanti altına alınmıştır.
+- **Backend-Enforced Security:** Admin yetkisi gerektiren işlemler (Örn: Veri silme) sunucu tarafında doğrulanır.
 
-### 🔐 Güvenlik ve Erişim Kontrolü
-- **Rol Tabanlı Erişim Kontrolü (RBAC):**
-  - **Admin:** Tam yetki (Kullanıcı yönetimi, denetim kayıtları, veri silme).
-  - **Agent:** Müşteri ve potansiyel müşteri yönetimi (Okuma/Yazma).
-  - **Viewer:** Sadece görüntüleme yetkisi.
-- **Güvenli Kimlik Doğrulama:** E-posta doğrulama zorunluluğu olan Firebase Auth entegrasyonu.
-- **Denetim Kayıtları (Audit Logs):** Kritik işlemlerin (Giriş, rol değişimi, silme) kapsamlı takibi (Sadece Adminler görebilir).
+### 2. Gerçek Zamanlı Veri Senkronizasyonu
+- **Stream Mimarisi:** Kullanıcı listeleri ve müşteri verileri `Stream<QuerySnapshot>` yapısı ile yönetilmektedir. Bu sayede, çoklu kullanıcı ortamında yapılan değişiklikler (Örn: Bir kullanıcının rolünün değişmesi veya silinmesi) anlık olarak tüm bağlı istemcilere yansıtılır ve "hayalet kayıt" (ghost record) sorunlarının önüne geçilir.
 
-### 👥 Müşteri Yönetimi
-- **Gerçek Zamanlı Güncellemeler:** Cloud Firestore ile anlık senkronizasyon.
-- **Filtreleme ve Arama:** İsim, kategori veya etiketlere göre gelişmiş arama.
-- **Dinamik Kategoriler:** Müşterileri Aktif, Potansiyel, VIP veya Pasif olarak görsel indikatörlerle sınıflandırma.
+### 3. Duyarlı (Responsive) Arayüz Mimarisi
+- **Adaptif Layout:** Tek bir kod tabanı üzerinden hem masaüstü hem de mobil deneyim sunulmuştur.
+- **LayoutBuilder Entegrasyonu:** `Sidebar` bileşeni, ekran genişliğindeki değişimlere (resize) anlık tepki vererek animasyonlu ve "snap" efektli bir geçiş (collapse/expand) sağlar; bu sayede `RenderFlex` taşma hataları engellenmiştir.
 
-### 🎨 Modern Arayüz ve Kullanıcı Deneyimi
-- **Duyarlı Tasarım (Responsive):** Masaüstü (Yan Menü) ve Mobil (Çekmece Menü) görünümlerine tam uyumlu yerleşim.
-- **Katlanabilir Yan Menü:** Ekran alanını verimli kullanan akıllı navigasyon.
-- **Premium Estetik:** *Glassmorphism* dokunuşları ve *Outfit* yazı tipi ile temiz bir arayüz.
-- **İnteraktif Bileşenler:** Animasyonlu KPI kartları ve akıcı geçişler.
+### 4. Temiz Mimari ve State Management
+- **Provider Pattern:** Uygulama durumu; Auth, Data ve UI state'leri olmak üzere modüler `ChangeNotifier` sınıflarına ayrılmıştır. İş mantığı (Business Logic) arayüzden soyutlanmıştır.
 
-## 🛠️ Teknoloji Yığını
-
-- **Frontend:** Flutter (Dart)
-- **Backend:** Firebase (Auth, Firestore)
-- **Durum Yönetimi (State Management):** Provider
-- **Tipografi:** Google Fonts (Outfit)
-- **İkonlar:** Material Design Rounded
-
-## 📸 Ekran Görüntüleri
-
-| Dashboard (Masaüstü) | Mobil Navigasyon |
-|:---:|:---:|
-| ![Dashboard](screenshots/dashboard_desktop.png) | ![Mobil Menü](screenshots/mobile_menu.png) |
-
-| Kullanıcı Yönetimi | Müşteri Detayı |
-|:---:|:---:|
-| ![Kullanıcı Yönetimi](screenshots/user_management.png) | ![Müşteri Detayı](screenshots/customer_detail.png) |
-
-## 🏗️ Mimari
-
-Proje, aşağıdaki katmanlara ayrılmış temiz bir mimari (clean architecture) izler:
-- **Presentation (Sunum) Katmanı:** Widget'lar, Sayfalar ve Provider'lar.
-- **Domain/Data (Veri) Katmanı:** Repository'ler ve Servisler.
-- **Core (Çekirdek):** Yardımcı araçlar, Sabitler ve Temalar.
-
-## 🚦 Kurulum
-
-1. **Repoyu klonlayın:**
-   ```bash
-   git clone https://github.com/kullaniciadiniz/crm-app.git
-   ```
-2. **Bağımlılıkları yükleyin:**
-   ```bash
-   flutter pub get
-   ```
-3. **Uygulamayı çalıştırın:**
-   ```bash
-   flutter run
-   ```
-
----
-
-<br>
-<br>
-
-# 🇬🇧 CRM (Customer Relationship Management) Application
-
-A professional, secure, and modern CRM application built with **Flutter** and **Firebase**. Key features include real-time collaboration, role-based access control (RBAC), and a responsive audit logging system.
-
-![Project Banner](screenshots/dashboard_desktop.png)
-
-## 🚀 Key Features
-
-### 🔐 Security & Access Control
-- **Role-Based Access Control (RBAC):**
-  - **Admin:** Full access (Manage users, view audit logs, delete records).
-  - **Agent:** Manage customers and leads (Read/Write).
-  - **Viewer:** Read-only access to customer data.
-- **Secure Authentication:** Firebase Auth integration with email verification enforcement.
-- **Audit Logging:** Comprehensive tracking of critical actions (User logins, role changes, deletions) visible only to Admins.
-
-### 👥 Customer Management
-- **Real-time Updates:** Instant synchronization with Cloud Firestore.
-- **Filtering & Search:** Advanced search capabilities by name, category, or tags.
-- **Dynamic Categories:** Categorize customers as Active, Potential, VIP, or Inactive with visual indicators.
-
-### 🎨 Modern UI/UX
-- **Responsive Design:** Fully responsive layout adapting to Desktop (Sidebar) and Mobile (Drawer) views.
-- **Collapsible Sidebar:** Smart navigation that maximizes screen real estate.
-- **Premium Aesthetics:** Clean interface using *Glassmorphism* elements and the *Outfit* typeface.
-- **Interactive Widgets:** Animated KPI cards and smooth transitions.
-
-## 🛠️ Tech Stack
-
-- **Frontend:** Flutter (Dart)
-- **Backend:** Firebase (Auth, Firestore)
+## Kullanılan Teknolojiler
+- **Framework:** Flutter (Dart)
+- **Backend-as-a-Service:** Firebase (Authentication, Cloud Firestore)
 - **State Management:** Provider
-- **Typography:** Google Fonts (Outfit)
-- **Icons:** Material Design Rounded
+- **UI:** Material Design, Google Fonts
 
-## 📸 Screenshots
+## Bu Proje Neyi Gösteriyor?
+- **Full-Stack Entegrasyon:** Ön yüz ile bulut tabanlı bir arka ucun (Auth + DB) güvenli ve verimli entegrasyonu.
+- **Güvenlik Bilinci:** Yetkilendirmenin sadece UI'da değil, veritabanı kuralları seviyesinde kurgulanması.
+- **Kompleks State Yönetimi:** Asenkron veri akışlarının (Stream) ve global uygulama durumunun efektif yönetimi.
+- **Duyarlı Tasarım Yetkinliği:** Farklı ekran çözünürlüklerine uyum sağlayan esnek widget mimarisi kurma becerisi.
 
-| Dashboard (Desktop) | Mobile Navigation |
-|:---:|:---:|
-| ![Dashboard](screenshots/dashboard_desktop.png) | ![Mobile Menu](screenshots/mobile_menu.png) |
+---
 
-| User Management | Customer Detail |
-|:---:|:---:|
-| ![User Management](screenshots/user_management.png) | ![Customer Detail](screenshots/customer_detail.png) |
+<br>
+<br>
 
-## 🏗️ Architecture
+# Project Overview
 
-The project follows a clean architecture pattern separating:
-- **Presentation Layer:** Widgets, Pages, and Providers.
-- **Domain/Data Layer:** Repositories and Services.
-- **Core:** Utilities, Constants, and Themes.
+This project is a real-time CRM application designed for teams to manage customer relationships, user roles, and audit processes efficiently. The core objective was to build a performant interface on top of a scalable data architecture and a secure Role-Based Access Control (RBAC) system.
 
-## 🚦 Getting Started
+## Technical Highlights
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/yourusername/crm-app.git
-   ```
-2. **Install dependencies:**
-   ```bash
-   flutter pub get
-   ```
-3. **Run the app:**
-   ```bash
-   flutter run
-   ```
+### 1. Role-Based Access Control (RBAC) & Security
+Security is implemented significantly at the database level, ensuring data integrity beyond UI restrictions.
+- **Firestore Security Rules:** Custom security rules utilizing `request.auth` and `get()` functions ensure users (Viewer, Agent, Admin) can only access data permitted by their specific roles.
+- **Backend-Enforced Security:** Critical actions (e.g., deletion) are validated server-side to prevent unauthorized access.
 
-## 📄 License
+### 2. Real-Time Data Synchronization
+- **Stream Architecture:** User and customer data management utilizes `Stream<QuerySnapshot>`. This ensures changes in a multi-user environment (e.g., role updates or user deletions) are instantly propagated to all clients, effectively preventing stale data or "ghost record" issues.
 
-This project is open-source and available under the [MIT License](LICENSE).
+### 3. Responsive UI Architecture
+- **Adaptive Layout:** A single codebase delivers a seamless experience across both desktop and mobile form factors.
+- **LayoutBuilder Integration:** The custom `Sidebar` component dynamically adapts to viewport constraint changes using `LayoutBuilder`, proving a robust implementation that handles animation states and prevents layout overflows (RenderFlex errors).
+
+### 4. Clean Architecture & State Management
+- **Provider Pattern:** Application state is decoupled into modular `ChangeNotifier` providers (Auth, Data, UI). Business logic is strictly separated from the presentation layer.
+
+## Tech Stack
+- **Framework:** Flutter (Dart)
+- **Backend-as-a-Service:** Firebase (Authentication, Cloud Firestore)
+- **State Management:** Provider
+- **UI:** Material Design, Google Fonts
+
+## Key Competencies Demonstrated
+- **Full-Stack Integration:** Secure and efficient integration of a mobile frontend with cloud-native backend services.
+- **Security First Mindset:** Implementing authorization strictly at the database rule level rather than relying solely on client-side logic.
+- **Complex State Management:** Handling asynchronous data streams and global application state effectively.
+- **Responsive Design Proficiency:** Designing flexible widget hierarchies that adapt gracefully to varying screen constraints.
